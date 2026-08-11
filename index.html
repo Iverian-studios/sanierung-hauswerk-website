@@ -1,0 +1,3151 @@
+<!doctype html>
+<!--
+  HAUSWERK — Sanierung & Modernisierung (Demo)
+  Scrollgesteuerte Canvas-Frame-Sequenz: fünf Seedance-Clips, eine Kamerafahrt,
+  das Haus verwandelt sich beim Scrollen von Bestand zu saniert.
+  Frames: frames/desktop (236, volle 1920er-Auflösung), frames/mobile (118, jedes zweite Frame).
+-->
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#131110">
+  <meta name="description" content="Professionelle Sanierung und Modernisierung – sorgfältig geplant, hochwertig umgesetzt und persönlich begleitet.">
+  <title>HAUSWERK — Sanierung &amp; Modernisierung</title>
+  <link rel="icon" href="data:,">
+  <style>
+    /* Schriften liegen lokal — keine externen Requests (Datenschutz). */
+    @font-face {
+      font-family: "Inter";
+      src: url("fonts/Inter-100-900-latin.woff2") format("woff2");
+      font-weight: 100 900;
+      font-display: swap;
+    }
+    /* Eine einzige Schriftfamilie für die ganze Seite — Etiketten laufen
+       als Inter-Versalien mit weiter Laufweite. */
+
+    :root {
+      /* Elegant Luxury: warmes Tiefschwarz, Elfenbein, Champagner-Gold.
+         Dunkle Bühne #131110 / heller Teil #ECE7DB, Akzent #C6A35D,
+         auf hellem Grund abgedunkelt (#7C6233, Kontrast ≥ 4.5:1). */
+      --ink: #131110;
+      --ink-soft: #1a1815;
+      --paper: #ece7db;
+      --paper-card: #f5f1e7;
+      --paper-deep: #e4ded0;
+      --hell: #eae5da;
+      /* Helle Zone als umschaltbare Token (Theme-Schalter). */
+      --hell-grund: #ece7db;
+      --hell-vg: #1b1916;
+      --hell-ring: #2e2b26;
+      --hell-ring-weich: rgba(46, 43, 38, .14);
+      --karte-fluss: #a89f8f;
+      --karte-fluss-hell: #cfc8b8;
+      --mist: #8e8a83;
+      --line: rgba(234, 229, 218, .16);
+      --border-hell: #d3ccbb;
+      --muted-hell: #5e5a52;
+      /* Der eine Akzent: Champagner-Gold, auf hellem Grund abgedunkelt. */
+      --gold: #c6a35d;
+      --gold-ink: #7c6233;
+      --radius: 0.5rem;
+      --schatten: 0 4px 10px rgba(0, 0, 0, .1);
+      --schatten-dunkel: 0 6px 15px rgba(0, 0, 0, .3);
+      --display: "Inter", "Helvetica Neue", Arial, system-ui, sans-serif;
+      --data: "Inter", "Helvetica Neue", Arial, system-ui, sans-serif;
+      --gutter: clamp(20px, 4.2vw, 76px);
+      --ease-out: cubic-bezier(.22, 1, .36, 1);
+      --frame-progress: 0;
+      /* Wird von der Engine gesetzt: 0 = Bestand (kühl), 1 = fertig (warm). */
+      --warmth: 0;
+    }
+
+    /* Dunkles Design: die helle Zone wechselt auf die Dark-Token des Themes. */
+    html.dunkel {
+      --hell-grund: #131110;
+      --hell-vg: #eae5da;
+      --paper-card: #1a1815;
+      --paper-deep: #0e0d0b;
+      --border-hell: #2b2823;
+      --muted-hell: #8e8a83;
+      --gold-ink: #c6a35d;
+      --hell-ring: #d1cfc0;
+      --hell-ring-weich: rgba(209, 207, 192, .18);
+      --karte-fluss: #5c5a56;
+      --karte-fluss-hell: #3b3b3b;
+      --schatten: 0 6px 15px rgba(0, 0, 0, .3);
+    }
+
+    html.dunkel .standort-karte__badge { background: rgba(26, 24, 21, .85); }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html {
+      background: var(--ink);
+      color: var(--hell);
+      font-family: var(--display);
+      scroll-behavior: auto;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--ink);
+      color: var(--hell);
+      overflow-x: clip;
+      font-size: 17px;
+      line-height: 1.75;
+      /* Grund-Laufweite aus dem Theme. */
+      letter-spacing: .01em;
+    }
+
+    body.is-loading { overflow: hidden; }
+
+    a { color: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+    /* Fokusring im hellen Teil nach Theme-Vorgabe (ring: #2E2E2E). */
+    .editorial :focus-visible { outline-color: var(--hell-ring); }
+
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .micro {
+      font-family: var(--data);
+      font-size: 11px;
+      font-weight: 640;
+      line-height: 1.5;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    /* ============ LADEZUSTAND ============ */
+    .loader {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      padding: max(24px, env(safe-area-inset-top)) var(--gutter) max(26px, env(safe-area-inset-bottom));
+      background: var(--ink);
+      transition: clip-path 850ms var(--ease-out), visibility 850ms;
+      clip-path: inset(0 0 0 0);
+    }
+
+    .loader.is-done {
+      clip-path: inset(0 0 100% 0);
+      visibility: hidden;
+    }
+
+    .loader__mark {
+      align-self: center;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 22px;
+    }
+
+    .loader__word {
+      margin: 0;
+      font-size: clamp(44px, 9vw, 132px);
+      font-weight: 740;
+      letter-spacing: -.05em;
+      line-height: .9;
+    }
+
+    .loader__word em {
+      font-style: normal;
+      color: var(--gold);
+    }
+
+    .loader__meta {
+      margin-top: 18px;
+      color: var(--mist);
+    }
+
+    .loader__foot {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 18px;
+      padding-top: 22px;
+    }
+
+    .loader__track {
+      position: relative;
+      height: 1px;
+      overflow: hidden;
+      background: rgba(232, 227, 218, .22);
+    }
+
+    .loader__fill {
+      position: absolute;
+      inset: 0;
+      background: var(--gold);
+      transform: scaleX(0);
+      transform-origin: left;
+    }
+
+    /* ============ KOPFZEILE ============ */
+    .site-header {
+      position: fixed;
+      inset: 0 0 auto;
+      z-index: 90;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 64px;
+      padding: max(14px, env(safe-area-inset-top)) var(--gutter) 12px;
+      mix-blend-mode: difference;
+      pointer-events: none;
+      transition: transform 320ms var(--ease-out);
+    }
+
+    /* Über dem hellen Teil funktioniert difference nicht mehr (Buchstabensalat
+       über heller Überschrift). Dort legt die Zeile den Papierton unter sich,
+       unten weich auslaufend, und fährt beim Abwärtslesen aus dem Weg. */
+    .site-header.ist-licht {
+      mix-blend-mode: normal;
+      background: linear-gradient(180deg, var(--hell-grund) 72%, transparent);
+      color: var(--hell-vg);
+      padding-bottom: 22px;
+    }
+
+    .site-header.ist-versteckt { transform: translateY(-110%); }
+
+    .site-header a { pointer-events: auto; text-decoration: none; }
+
+    /* Wortmarke mit Tagline darunter — die Zeile gehört zur Marke,
+       nicht mehr in den Hero. */
+    .site-header__brand {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 14px;
+      font-weight: 740;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .site-header__sub {
+      font-size: 9px;
+      font-weight: 560;
+      letter-spacing: .22em;
+      opacity: .68;
+    }
+
+    .site-header__aktionen {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .schalter {
+      pointer-events: auto;
+      display: grid;
+      place-items: center;
+      min-width: 44px;
+      height: 44px;
+      padding: 0 10px;
+      border: 1px solid currentColor;
+      border-radius: var(--radius);
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      transition: transform 180ms var(--ease-out), opacity 180ms ease;
+    }
+
+    .schalter:hover { transform: scale(1.05); }
+    .schalter:active { transform: scale(.94); }
+    .schalter svg { width: 18px; height: 18px; }
+    .schalter__sonne { display: none; }
+    html.dunkel .schalter__sonne { display: block; }
+    html.dunkel .schalter__mond { display: none; }
+
+    /* ============ MENÜ ============ */
+    /* Der Menü-Schalter: zwei Striche drehen sich zum Kreuz. */
+    .menue-strich {
+      transform-box: view-box;
+      transform-origin: center;
+      transition: transform 320ms var(--ease-out);
+    }
+
+    .schalter--menue.ist-offen .menue-strich--oben { transform: translateY(3px) rotate(45deg); }
+    .schalter--menue.ist-offen .menue-strich--unten { transform: translateY(-3px) rotate(-45deg); }
+
+    /* Vollbild-Overlay aus dunklem Glas unter der Kopfzeile (z-index 80 < 90). */
+    .menue {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      align-items: center;
+      overflow-y: auto;
+      padding: 110px var(--gutter) max(28px, env(safe-area-inset-bottom));
+      background: rgba(19, 17, 16, .78);
+      -webkit-backdrop-filter: blur(26px) saturate(1.15);
+      backdrop-filter: blur(26px) saturate(1.15);
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 380ms ease, visibility 380ms;
+    }
+
+    .menue.ist-offen { visibility: visible; opacity: 1; }
+
+    .menue__punkte { display: grid; gap: clamp(6px, 1.6vh, 16px); }
+
+    .menue__punkt {
+      justify-self: start;
+      position: relative;
+      padding: 4px 0;
+      color: var(--paper);
+      font-size: clamp(27px, 4.6vw, 54px);
+      font-weight: 710;
+      letter-spacing: -.03em;
+      line-height: 1.12;
+      text-decoration: none;
+      /* Punkte kommen gestaffelt von unten, sobald das Menü offen ist. */
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity 460ms var(--ease-out), transform 460ms var(--ease-out), color 200ms ease;
+    }
+
+    .menue.ist-offen .menue__punkt { opacity: 1; transform: none; }
+    .menue.ist-offen .menue__punkt:nth-child(2) { transition-delay: 60ms; }
+    .menue.ist-offen .menue__punkt:nth-child(3) { transition-delay: 120ms; }
+    .menue.ist-offen .menue__punkt:nth-child(4) { transition-delay: 180ms; }
+    .menue.ist-offen .menue__punkt:nth-child(5) { transition-delay: 240ms; }
+    .menue.ist-offen .menue__punkt:nth-child(6) { transition-delay: 300ms; }
+    .menue.ist-offen .menue__punkt:nth-child(7) { transition-delay: 360ms; }
+
+    .menue__punkt:hover { color: var(--gold); }
+    .menue__punkt--gold { color: var(--gold); }
+    .menue__punkt--gold:hover { color: #e2c78a; }
+
+    /* Goldlinie wächst unter dem gezeigten Punkt — dieselbe Geste wie
+       unter der Standort-Karte. */
+    .menue__punkt::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, var(--gold), rgba(198, 163, 93, .3), transparent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 380ms var(--ease-out);
+    }
+
+    .menue__punkt:hover::after { transform: scaleX(1); }
+
+    .menue__fuss { margin: 0; color: var(--mist); }
+    .menue__fuss a { color: inherit; }
+    .menue__fuss a:hover { color: var(--paper); }
+
+    body.menue-offen { overflow: hidden; }
+
+    /* Bei offenem Menü steht die Kopfzeile ruhig über dem dunklen Glas —
+       kein Blend-Modus, kein Papierstreifen, kein Wegfahren. */
+    body.menue-offen .site-header {
+      mix-blend-mode: normal;
+      background: none;
+      color: var(--paper);
+      transform: none;
+    }
+
+    /* ============ DOCK ============ */
+    /* Katalog-Vorbild „Apple Style Dock": eine transparente Glasleiste
+       unten mittig, die Symbole wachsen zum Zeiger hin. Sie erscheint
+       erst, wenn die Kamerafahrt durch ist, und begleitet den hellen
+       Teil beim Scrollen; das Menü (z 80) legt sich darüber. */
+    .dock {
+      position: fixed;
+      left: 50%;
+      bottom: max(14px, env(safe-area-inset-bottom));
+      z-index: 70;
+      transform: translate(-50%, 150%);
+      opacity: 0;
+      transition: transform 480ms var(--ease-out), opacity 380ms ease;
+      pointer-events: none;
+    }
+
+    .dock.ist-da {
+      transform: translate(-50%, 0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .dock__leiste {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      height: 60px;
+      padding: 0 12px 10px;
+      border: 1px solid rgba(234, 229, 218, .22);
+      border-radius: 18px;
+      background: rgba(19, 17, 16, .38);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      backdrop-filter: blur(18px) saturate(1.2);
+      box-shadow: 0 14px 40px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .14);
+    }
+
+    .dock__punkt {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(234, 229, 218, .22);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .08);
+      color: #ece5d4;
+      /* JS setzt Breite und Höhe zum Zeigerabstand — der Übergang glättet. */
+      transition: width 160ms ease-out, height 160ms ease-out,
+        border-color 200ms ease, color 200ms ease;
+    }
+
+    .dock__punkt:hover { border-color: var(--gold); color: var(--gold-hell); }
+    .dock__punkt svg { width: 52%; height: 52%; }
+
+    .dock__label {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translate(-50%, 4px);
+      padding: 4px 10px;
+      border: 1px solid rgba(234, 229, 218, .2);
+      border-radius: 6px;
+      background: rgba(19, 17, 16, .88);
+      color: var(--paper);
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 200ms ease, transform 200ms ease;
+      pointer-events: none;
+    }
+
+    .dock__punkt:hover .dock__label,
+    .dock__punkt:focus-visible .dock__label { opacity: 1; transform: translate(-50%, 0); }
+
+    .standort-karte__link { display: block; cursor: pointer; }
+
+    .standort-route {
+      margin-top: 8px;
+      color: var(--gold-ink);
+      text-decoration: none;
+      align-self: flex-start;
+    }
+
+    .standort-route:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+    /* ============ SEQUENZ ============ */
+    .sequence {
+      position: relative;
+      height: 950vh;
+      background: var(--ink);
+    }
+
+    .stage {
+      position: sticky;
+      top: 0;
+      width: 100%;
+      height: 100svh;
+      overflow: hidden;
+      background: var(--ink);
+      isolation: isolate;
+    }
+
+    #film-canvas {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Schleier: unten für die Messlatte, links für Text. Wärme zieht mit. */
+    .stage__scrim {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background:
+        linear-gradient(0deg, rgba(19, 17, 16, .78) 0%, rgba(19, 17, 16, .18) 18%, transparent 34%),
+        linear-gradient(180deg, rgba(19, 17, 16, .42) 0%, transparent 22%);
+      pointer-events: none;
+    }
+
+    .stage__warm {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: linear-gradient(15deg, rgba(80, 52, 18, .28), transparent 55%);
+      opacity: calc(var(--warmth) * .9);
+      transition: opacity 300ms linear;
+      pointer-events: none;
+      mix-blend-mode: soft-light;
+    }
+
+    /* ============ KAPITEL ============ */
+    .chapters { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+
+    .chapter {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      align-content: center;
+      column-gap: clamp(10px, 1.2vw, 20px);
+      padding: 92px var(--gutter) 118px;
+      visibility: hidden;
+    }
+
+    .chapter.is-visible { visibility: visible; }
+
+    .chapter__copy { position: relative; align-self: center; }
+
+    /* Lokaler Schleier hinter dem Textblock statt Kasten: eine weiche,
+       ortsgebundene Abdunklung, die auf heller Fassade Lesbarkeit sichert. */
+    .chapter__copy::before {
+      content: "";
+      position: absolute;
+      inset: -16% -20%;
+      z-index: -1;
+      background: radial-gradient(ellipse 70% 62% at 42% 52%, rgba(16, 16, 16, .58), rgba(16, 16, 16, .28) 55%, transparent 78%);
+      filter: blur(2px);
+      pointer-events: none;
+    }
+
+    .chapter__eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 20px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--gold);
+      text-shadow: 0 1px 3px rgba(10, 11, 13, .9), 0 1px 14px rgba(10, 11, 13, .8);
+    }
+
+    .chapter__eyebrow::before {
+      content: "";
+      width: 26px;
+      height: 2px;
+      background: var(--gold);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 650ms 90ms var(--ease-out);
+    }
+
+    .chapter.is-visible .chapter__eyebrow::before { transform: scaleX(1); }
+
+    .reveal { overflow: hidden; padding-bottom: .1em; }
+
+    .reveal > span {
+      display: block;
+      transform: translateY(115%);
+      transition: transform 720ms var(--ease-out);
+    }
+
+    .reveal:nth-of-type(3) > span { transition-delay: 80ms; }
+    .reveal:nth-of-type(4) > span { transition-delay: 150ms; }
+    .chapter.is-visible .reveal > span { transform: translateY(0); }
+
+    .chapter__title {
+      margin: 0;
+      font-size: clamp(34px, 4.6vw, 76px);
+      font-weight: 700;
+      letter-spacing: -.028em;
+      word-spacing: .06em;
+      line-height: 1.02;
+      text-wrap: balance;
+      text-shadow: 0 1px 24px rgba(10, 11, 13, .55);
+    }
+
+    .chapter__deck {
+      max-width: 30rem;
+      margin: 22px 0 0;
+      font-size: clamp(16px, 1.35vw, 20px);
+      font-weight: 430;
+      line-height: 1.6;
+      letter-spacing: -.012em;
+      color: rgba(232, 227, 218, .93);
+      text-shadow: 0 1px 18px rgba(10, 11, 13, .6);
+      text-wrap: pretty;
+    }
+
+    /* Gleichrangige Punkte: Liste ohne Nummern, feine Linien. */
+    .chapter__list {
+      max-width: 30rem;
+      margin: 26px 0 0;
+      padding: 0;
+      list-style: none;
+      columns: 2;
+      column-gap: clamp(18px, 2vw, 34px);
+      color: rgba(232, 227, 218, .92);
+    }
+
+    .chapter__list li {
+      break-inside: avoid;
+      padding: 9px 0;
+      border-top: 1px solid var(--line);
+      font-size: 14.5px;
+      line-height: 1.45;
+      letter-spacing: .005em;
+      text-shadow: 0 1px 14px rgba(10, 11, 13, .65);
+    }
+
+    .chapter--hero { align-content: end; }
+    .chapter--hero .chapter__copy { grid-column: 1 / 9; padding-bottom: 8vh; }
+
+    .chapter--hero .chapter__title {
+      font-size: clamp(42px, 6.4vw, 108px);
+      font-weight: 730;
+      letter-spacing: -.032em;
+      line-height: .99;
+    }
+
+    .chapter--hero .chapter__deck { max-width: 34rem; }
+
+    .chapter--left .chapter__copy { grid-column: 1 / 7; }
+    .chapter--right .chapter__copy { grid-column: 7 / 13; }
+
+    .chapter--final { align-content: end; }
+    .chapter--final .chapter__copy { grid-column: 1 / 8; padding-bottom: 9vh; }
+
+    /* Glas-Buttons: eine mattierte Scheibe mit Champagner-Ton im Glas und
+       feiner Lichtkante oben. Beim Zeigen läuft ein Lichtstreif durch und
+       der Pfeil rückt nach — die Bühne schimmert durch das Glas. */
+    .cta {
+      pointer-events: auto;
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      gap: 34px;
+      min-height: 54px;
+      margin-top: 30px;
+      padding: 0 24px;
+      border: 1px solid rgba(198, 163, 93, .55);
+      background: linear-gradient(165deg, rgba(198, 163, 93, .34), rgba(198, 163, 93, .12) 55%, rgba(255, 255, 255, .05));
+      -webkit-backdrop-filter: blur(14px) saturate(1.25);
+      backdrop-filter: blur(14px) saturate(1.25);
+      color: #f6efdd;
+      font-family: var(--data);
+      font-size: 12px;
+      font-weight: 680;
+      letter-spacing: .12em;
+      text-decoration: none;
+      text-transform: uppercase;
+      transition: transform 240ms var(--ease-out), box-shadow 240ms ease, border-color 240ms ease;
+    }
+
+    .cta::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(115deg, transparent 32%, rgba(255, 250, 238, .38) 50%, transparent 68%);
+      transform: translateX(-130%);
+      transition: transform 650ms ease;
+      pointer-events: none;
+    }
+
+    .cta::after {
+      content: "→";
+      position: relative;
+      font-size: 16px;
+      transition: transform 240ms var(--ease-out);
+    }
+
+    .cta:hover {
+      transform: translateY(-2px);
+      border-color: rgba(226, 199, 138, .9);
+      box-shadow: 0 12px 32px rgba(198, 163, 93, .28), inset 0 1px 0 rgba(255, 255, 255, .35);
+    }
+    .cta:hover::before { transform: translateX(130%); }
+    .cta:hover::after { transform: translateX(5px); }
+    .cta:active { transform: translateY(0) scale(.985); }
+
+    /* Fokusring nach Katalog-/Theme-Vorbild statt Outline. */
+    .cta:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(198, 163, 93, .45), var(--schatten);
+    }
+
+    /* Auf hellem Grund braucht das Glas eine helle Tönung und Tinte als
+       Schrift — sonst säuft der Text im Papierton ab. */
+    .editorial .cta {
+      border-color: rgba(124, 98, 51, .5);
+      background: linear-gradient(165deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .2) 60%, rgba(198, 163, 93, .18));
+      color: var(--hell-vg);
+    }
+
+    html.dunkel .editorial .cta {
+      border-color: rgba(198, 163, 93, .55);
+      background: linear-gradient(165deg, rgba(198, 163, 93, .3), rgba(198, 163, 93, .1) 55%, rgba(255, 255, 255, .04));
+      color: #f6efdd;
+    }
+
+    /* Umriss-Variante für Nebenwege: klares Glas ohne Goldton. */
+    .cta--umriss {
+      border-color: rgba(234, 229, 218, .4);
+      background: rgba(19, 17, 16, .3);
+      color: var(--paper);
+    }
+
+    .cta--umriss:hover {
+      border-color: var(--paper);
+      box-shadow: 0 10px 28px rgba(10, 11, 13, .45), inset 0 1px 0 rgba(255, 255, 255, .2);
+    }
+
+    .cta-reihe {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0 16px;
+    }
+
+    /* Radius und Schatten aus dem Theme auf allen Bedienelementen. */
+    .cta, .pfeil, .field input, .field textarea { border-radius: var(--radius); }
+    .vergleich { border-radius: var(--radius); }
+    .vergleich__label { border-radius: calc(var(--radius) - 2px); }
+    .gap { border-radius: calc(var(--radius) - 3px); }
+    .cta { box-shadow: var(--schatten), inset 0 1px 0 rgba(255, 255, 255, .22); }
+    .field input, .field textarea { box-shadow: var(--schatten); }
+
+    /* Formularfokus: Ringfarbe aus dem Theme (#2E2E2E), weich abgesetzt. */
+    .field input:focus, .field textarea:focus {
+      outline: none;
+      border-color: var(--hell-ring);
+      box-shadow: 0 0 0 3px var(--hell-ring-weich), var(--schatten);
+    }
+
+    .cta-note {
+      display: block;
+      margin-top: 12px;
+      color: rgba(232, 227, 218, .68);
+    }
+
+    /* ============ KAPITEL-PFEILE ============ */
+    /* Zurück links unten, weiter rechts unten — wie Buchseiten. */
+    .pfeile {
+      position: absolute;
+      left: var(--gutter);
+      right: var(--gutter);
+      bottom: max(20px, env(safe-area-inset-bottom));
+      z-index: 8;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .pfeil {
+      pointer-events: auto;
+      display: grid;
+      place-items: center;
+      width: 54px;
+      height: 54px;
+      padding: 0;
+      border: 1px solid rgba(232, 227, 218, .45);
+      background: rgba(19, 17, 16, .3);
+      -webkit-backdrop-filter: blur(12px) saturate(1.2);
+      backdrop-filter: blur(12px) saturate(1.2);
+      color: var(--paper);
+      cursor: pointer;
+      transition: background 200ms ease, color 200ms ease, border-color 200ms ease,
+        opacity 200ms ease, transform 200ms var(--ease-out), box-shadow 200ms ease;
+    }
+
+    .pfeil svg { width: 26px; height: 26px; }
+    .pfeil:hover:not(:disabled) {
+      background: var(--paper);
+      border-color: var(--paper);
+      color: var(--ink);
+      transform: scale(1.06);
+      box-shadow: var(--schatten-dunkel);
+    }
+    .pfeil:active:not(:disabled) { transform: scale(.94); }
+    .pfeil:disabled { opacity: .3; cursor: default; }
+
+    /* ============ HELLER TEIL ============ */
+    .editorial {
+      position: relative;
+      z-index: 10;
+      padding: clamp(90px, 12vw, 170px) var(--gutter) 0;
+      background: var(--hell-grund);
+      color: var(--hell-vg);
+    }
+
+    .editorial section { padding-bottom: clamp(80px, 10vw, 150px); }
+
+    .editorial .micro { color: var(--gold-ink); }
+
+    .editorial__eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 22px;
+    }
+
+    .editorial__eyebrow::before {
+      content: "";
+      width: 26px;
+      height: 2px;
+      background: var(--gold-ink);
+    }
+
+    /* Beschreibungen vollbreit und linksbündig — nichts hängt rechts. */
+    .editorial h2 {
+      max-width: 22ch;
+      margin: 0;
+      font-size: clamp(32px, 4.4vw, 68px);
+      font-weight: 710;
+      letter-spacing: -.042em;
+      line-height: 1.04;
+      text-wrap: balance;
+    }
+
+    .editorial p {
+      max-width: 44ch;
+      margin: 26px 0 0;
+      font-size: clamp(16.5px, 1.35vw, 19.5px);
+      line-height: 1.78;
+      letter-spacing: -.008em;
+      color: var(--muted-hell);
+      text-wrap: pretty;
+    }
+
+    .trust-list {
+      max-width: 56rem;
+      margin: clamp(36px, 5vw, 64px) 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .trust-list li {
+      display: grid;
+      grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+      gap: 10px 32px;
+      padding: 18px 0;
+      border-top: 1px solid var(--border-hell);
+      font-size: clamp(16px, 1.3vw, 19px);
+      line-height: 1.6;
+    }
+
+    .trust-list li:last-child { border-bottom: 1px solid var(--border-hell); }
+    .trust-list strong { font-weight: 640; letter-spacing: -.015em; }
+    .trust-list span { color: var(--muted-hell); }
+
+    /* Beim Zeigen rückt die Zeile leicht ein und eine Goldlinie wächst mit —
+       dieselbe Geste wie unter der Standort-Karte. */
+    .trust-list li {
+      position: relative;
+      transition: padding-left 300ms var(--ease-out);
+    }
+
+    .trust-list li::before {
+      content: "";
+      position: absolute;
+      top: -1px;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, var(--gold-ink), rgba(198, 163, 93, .35), transparent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 420ms var(--ease-out);
+    }
+
+    @media (hover: hover) {
+      .trust-list li:hover { padding-left: 14px; }
+      .trust-list li:hover::before { transform: scaleX(1); }
+    }
+
+    /* ============ AUFGEHEN (Scroll-Reveal im hellen Teil) ============ */
+    /* Inhalte des hellen Teils gehen beim Erreichen auf: kurz von unten,
+       gestaffelt in Gruppen. JS vergibt Klasse und Staffelung; in der
+       ruhigen Fassung steht alles sofort. */
+    .aufgehen {
+      opacity: 0;
+      transform: translateY(26px);
+      transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out);
+      transition-delay: var(--staffel, 0ms);
+    }
+
+    .aufgehen.ist-da { opacity: 1; transform: none; }
+
+    :root.ruhig .aufgehen { opacity: 1; transform: none; }
+
+    /* Vorher/Nachher-Vergleich: derselbe Blick auf das Haus, ein Griff
+       schiebt die sanierte Fassung über den Bestand. */
+    .vergleich {
+      --pos: 50%;
+      position: relative;
+      margin-top: clamp(36px, 5vw, 64px);
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      background: var(--ink-soft);
+      touch-action: none;
+    }
+
+    .vergleich img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Rechts vom Griff liegt das Nachher-Bild frei. */
+    .vergleich__nachher-halter {
+      position: absolute;
+      inset: 0;
+      clip-path: inset(0 0 0 var(--pos));
+    }
+
+    .vergleich__griff {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: var(--pos);
+      width: 2px;
+      margin-left: -1px;
+      background: var(--paper);
+      pointer-events: none;
+      /* Trennlinien-Schatten wie in der Katalog-Vorlage. */
+      box-shadow: 0 0 8px rgba(0, 0, 0, .3);
+    }
+
+    /* Auf Geräten mit Maus ist der Griff selbst der Zeiger. */
+    @media (hover: hover) and (pointer: fine) {
+      .vergleich, .vergleich__regler { cursor: none; }
+    }
+
+    .vergleich__griff::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 46px;
+      height: 46px;
+      transform: translate(-50%, -50%);
+      border: 1px solid var(--paper);
+      border-radius: 50%;
+      background: rgba(19, 17, 16, .55);
+    }
+
+    .vergleich__griff::after {
+      content: "‹ ›";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -52%);
+      color: var(--paper);
+      font-family: var(--display);
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-indent: .09em;
+      line-height: 1;
+      /* Beide Pfeilspitzen bleiben nebeneinander — nie umbrechen. */
+      white-space: nowrap;
+    }
+
+    .vergleich__label {
+      position: absolute;
+      top: 14px;
+      padding: 7px 12px;
+      background: rgba(19, 17, 16, .68);
+      pointer-events: none;
+    }
+
+    /* Schlägt die Bronze-Regel des hellen Teils — auf den dunklen Plaketten
+       gehört Papierweiß. */
+    .editorial .vergleich__label,
+    .static-story .vergleich__label { color: var(--paper); }
+
+    .vergleich__label--vorher { left: 14px; }
+    .vergleich__label--nachher { right: 14px; }
+
+    /* Der unsichtbare Regler trägt Maus, Touch und Tastatur. */
+    .vergleich__regler {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      cursor: ew-resize;
+    }
+
+    /* ============ STANDORT ============ */
+    .standort {
+      display: grid;
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+      gap: clamp(32px, 5vw, 72px);
+      align-items: start;
+    }
+
+    .standort-fakten {
+      list-style: none;
+      margin: clamp(28px, 4vw, 44px) 0 0;
+      padding: 0;
+      max-width: 34rem;
+    }
+
+    .standort-fakten li {
+      display: grid;
+      grid-template-columns: minmax(0, 9.5rem) minmax(0, 1fr);
+      gap: 6px 24px;
+      padding: 14px 0;
+      border-top: 1px solid var(--border-hell);
+      font-size: clamp(15.5px, 1.2vw, 17.5px);
+      line-height: 1.6;
+    }
+
+    .standort-fakten li:last-child { border-bottom: 1px solid var(--border-hell); }
+    .standort-fakten strong { font-weight: 640; letter-spacing: -.01em; }
+    .standort-fakten span { color: var(--muted-hell); }
+
+    /* Die Karte neigt sich leicht zum Zeiger (Katalog-Vorbild „Location Map"). */
+    .standort-karte-halter { perspective: 900px; }
+
+    .standort-karte {
+      position: relative;
+      margin: 0;
+      background: var(--paper-card);
+      border: 1px solid var(--border-hell);
+      border-radius: var(--radius);
+      box-shadow: var(--schatten);
+      overflow: hidden;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+
+    .standort-karte svg { display: block; width: 100%; height: auto; }
+
+    .standort-karte__badge {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border: 1px solid var(--border-hell);
+      border-radius: 999px;
+      background: rgba(230, 228, 215, .85);
+      color: var(--muted-hell);
+    }
+
+    .standort-karte__punkt {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: standort-blinken 2.4s ease-in-out infinite;
+    }
+
+    @keyframes standort-blinken {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .35; }
+    }
+
+    /* Pulsring um den Dresden-Pin. */
+    .standort-puls {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: standort-puls 2.6s ease-out infinite;
+    }
+
+    @keyframes standort-puls {
+      0% { transform: scale(1); opacity: .6; }
+      70%, 100% { transform: scale(3.2); opacity: 0; }
+    }
+
+    .standort-karte__fuss {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 14px 18px 16px;
+      border-top: 1px solid var(--border-hell);
+    }
+
+    .standort-karte__fuss strong { font-size: 15px; font-weight: 680; color: var(--hell-vg); }
+    .standort-karte__fuss .micro { color: var(--muted-hell); }
+
+    /* Unterstreichung wächst beim Zeigen — wie in der Katalog-Vorlage. */
+    .standort-karte__linie {
+      margin-top: 6px;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(198, 163, 93, .55), rgba(198, 163, 93, .3), transparent);
+      transform: scaleX(.3);
+      transform-origin: left;
+      transition: transform 400ms var(--ease-out);
+    }
+
+    .standort-karte:hover .standort-karte__linie { transform: scaleX(1); }
+
+    /* Kontakt */
+    .contact { max-width: 56rem; }
+
+    .contact-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px 24px;
+      margin-top: clamp(32px, 4vw, 52px);
+    }
+
+    .contact-form .field--wide { grid-column: 1 / -1; }
+
+    .field label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--gold-ink);
+    }
+
+    .field input, .field textarea {
+      width: 100%;
+      min-height: 52px;
+      padding: 14px 16px;
+      border: 1px solid var(--border-hell);
+      border-radius: 0;
+      background: var(--paper-card);
+      color: var(--hell-vg);
+      font-family: var(--display);
+      font-size: 16px;
+      line-height: 1.5;
+      transition: border-color 200ms ease;
+    }
+
+    .field textarea { min-height: 132px; resize: vertical; }
+    .field input:focus, .field textarea:focus { outline: none; border-color: var(--gold-ink); }
+
+    /* ---- Lead-Einordnung ---- */
+    .feld-etikett { display: block; margin-bottom: 10px; color: var(--gold-ink); }
+
+    .lead-pillen { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .pille {
+      min-height: 44px;
+      padding: 8px 18px;
+      border: 1px solid var(--border-hell);
+      border-radius: 999px;
+      background: var(--paper-card);
+      color: var(--muted-hell);
+      font-family: var(--display);
+      font-size: 13.5px;
+      font-weight: 560;
+      letter-spacing: .01em;
+      cursor: pointer;
+      transition: border-color 200ms ease, background 200ms ease, color 200ms ease,
+        transform 200ms var(--ease-out), box-shadow 200ms ease;
+    }
+
+    .pille:hover { border-color: var(--gold-ink); color: var(--hell-vg); transform: translateY(-1px); }
+
+    /* Gewählte Kategorie: Goldglas, wie die aktiven Elemente der Terminseite. */
+    .pille[aria-checked="true"] {
+      border-color: var(--gold-ink);
+      background: linear-gradient(165deg, rgba(198, 163, 93, .38), rgba(198, 163, 93, .14));
+      color: var(--hell-vg);
+      font-weight: 660;
+      box-shadow: 0 4px 14px rgba(198, 163, 93, .22), inset 0 1px 0 rgba(255, 255, 255, .3);
+    }
+
+    .pille:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--hell-ring-weich), var(--schatten); border-color: var(--hell-ring); }
+
+    /* Budget-Schieber: Haarlinie mit Goldfüllung bis zum Griff. --fuell
+       setzt das JS aus dem Wert. */
+    .lead-budget input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 44px;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+      box-shadow: none;
+      border: 0;
+    }
+
+    .lead-budget input[type="range"]::-webkit-slider-runnable-track {
+      height: 2px;
+      background: linear-gradient(90deg, var(--gold-ink) var(--fuell, 50%), var(--border-hell) var(--fuell, 50%));
+    }
+
+    .lead-budget input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 24px;
+      height: 24px;
+      margin-top: -11px;
+      border: 1px solid var(--gold-ink);
+      border-radius: 50%;
+      background: linear-gradient(165deg, rgba(198, 163, 93, .55), rgba(198, 163, 93, .25)), var(--paper-card);
+      box-shadow: 0 4px 12px rgba(198, 163, 93, .3), inset 0 1px 0 rgba(255, 255, 255, .4);
+      transition: transform 180ms var(--ease-out);
+    }
+
+    .lead-budget input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.12); }
+
+    .lead-budget input[type="range"]::-moz-range-track {
+      height: 2px;
+      background: var(--border-hell);
+    }
+
+    .lead-budget input[type="range"]::-moz-range-progress {
+      height: 2px;
+      background: var(--gold-ink);
+    }
+
+    .lead-budget input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border: 1px solid var(--gold-ink);
+      border-radius: 50%;
+      background: var(--paper-card);
+      box-shadow: 0 4px 12px rgba(198, 163, 93, .3);
+    }
+
+    .lead-budget input[type="range"]:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--hell-ring-weich);
+      border-radius: var(--radius);
+    }
+
+    .lead-budget__wert {
+      margin: 6px 0 0;
+      color: var(--gold-ink);
+      font-size: 15px;
+      font-weight: 640;
+      letter-spacing: -.01em;
+    }
+
+    .contact-form__foot {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 28px;
+    }
+
+    .contact-form button.cta { cursor: pointer; margin-top: 0; }
+
+    .contact-form .cta-note { margin-top: 0; color: var(--muted-hell); }
+
+    .form-status {
+      grid-column: 1 / -1;
+      margin: 0;
+      min-height: 1.5em;
+      color: var(--gold-ink);
+      font-weight: 550;
+    }
+
+    /* ============ REFERENZEN (Karussell) ============ */
+    /* Katalog-Vorbild „Elegant Carousel": links Nummer, Titel, Meta und
+       Text, rechts das Bild mit Goldwinkeln; darunter beschriftete
+       Fortschrittsleisten. Läuft von allein weiter (6 s pro Projekt),
+       hält unterm Zeiger an; Pfeile, Leisten und Wischen blättern. */
+    .karussell { margin-top: clamp(36px, 5vw, 64px); }
+
+    .karussell__buehne { display: grid; }
+
+    .karussell__folie {
+      grid-area: 1 / 1;
+      display: grid;
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: clamp(24px, 4vw, 56px);
+      align-items: center;
+      opacity: 0;
+      transform: translateY(14px);
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 550ms var(--ease-out), transform 550ms var(--ease-out), visibility 550ms;
+    }
+
+    /* Die neue Folie wartet kurz, bis die alte gegangen ist. */
+    .karussell__folie.ist-aktiv {
+      opacity: 1;
+      transform: none;
+      visibility: visible;
+      pointer-events: auto;
+      transition-delay: 180ms;
+    }
+
+    .karussell__nummer {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 18px;
+      color: var(--gold-ink);
+    }
+
+    .karussell__nummer-linie { width: 34px; height: 1px; background: var(--gold-ink); }
+
+    .karussell__titel {
+      margin: 0;
+      font-size: clamp(24px, 2.6vw, 38px);
+      font-weight: 700;
+      letter-spacing: -.025em;
+      line-height: 1.1;
+      text-wrap: balance;
+    }
+
+    .karussell__meta { margin: 12px 0 0; color: var(--gold-ink); }
+
+    .karussell__beschreibung {
+      max-width: 30rem;
+      margin: 16px 0 0;
+      font-size: 15.5px;
+      line-height: 1.75;
+      color: var(--muted-hell);
+    }
+
+    .karussell__bild {
+      position: relative;
+      margin: 0;
+      aspect-ratio: 16 / 9;
+    }
+
+    .karussell__bild img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: var(--radius);
+      box-shadow: var(--schatten);
+    }
+
+    /* Goldwinkel oben links und unten rechts — der Zierrahmen der Vorlage. */
+    .karussell__bild::before, .karussell__bild::after {
+      content: "";
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      border: 2px solid var(--gold-ink);
+      pointer-events: none;
+    }
+
+    .karussell__bild::before { top: -10px; left: -10px; border-right: 0; border-bottom: 0; }
+    .karussell__bild::after { bottom: -10px; right: -10px; border-left: 0; border-top: 0; }
+
+    .karussell__pfeile { display: flex; gap: 10px; margin-top: clamp(20px, 3vw, 30px); }
+
+    .karussell__pfeil {
+      display: grid;
+      place-items: center;
+      width: 46px;
+      height: 46px;
+      padding: 0;
+      border: 1px solid var(--border-hell);
+      border-radius: 50%;
+      background: var(--paper-card);
+      color: var(--hell-vg);
+      cursor: pointer;
+      transition: border-color 200ms ease, color 200ms ease, transform 200ms var(--ease-out);
+    }
+
+    .karussell__pfeil:hover { border-color: var(--gold-ink); color: var(--gold-ink); transform: scale(1.06); }
+    .karussell__pfeil:active { transform: scale(.94); }
+    .karussell__pfeil svg { width: 20px; height: 20px; }
+
+    .karussell__fortschritt {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: clamp(18px, 2.6vw, 26px);
+    }
+
+    .karussell__schritt {
+      padding: 8px 0 0;
+      border: 0;
+      background: none;
+      text-align: left;
+      color: var(--muted-hell);
+      cursor: pointer;
+    }
+
+    .karussell__spur {
+      display: block;
+      height: 2px;
+      border-radius: 999px;
+      background: var(--border-hell);
+      overflow: hidden;
+    }
+
+    .karussell__fuellung { display: block; width: 0; height: 100%; background: var(--gold-ink); }
+
+    /* Die aktive Leiste füllt sich im Takt des Autoplays; ist-vorbei
+       steht voll, kommende stehen leer. Pause hält die Füllung an. */
+    .karussell__schritt.ist-aktiv .karussell__fuellung { animation: karussell-lauf 6000ms linear forwards; }
+    .karussell.ist-pausiert .karussell__fuellung { animation-play-state: paused; }
+    .karussell__schritt.ist-vorbei .karussell__fuellung { width: 100%; }
+
+    @keyframes karussell-lauf { to { width: 100%; } }
+
+    .karussell__schritt-label { display: block; margin-top: 8px; }
+    .karussell__schritt.ist-aktiv .karussell__schritt-label { color: var(--gold-ink); }
+
+    /* ============ FAQ ============ */
+    .faq-liste {
+      max-width: 52rem;
+      margin-top: clamp(30px, 4vw, 48px);
+      display: grid;
+      gap: 10px;
+    }
+
+    .faq-punkt {
+      border: 1px solid var(--border-hell);
+      border-radius: var(--radius);
+      background: var(--paper-card);
+      box-shadow: var(--schatten);
+      transition: border-color 240ms ease;
+    }
+
+    .faq-punkt:hover, .faq-punkt[open] { border-color: var(--gold-ink); }
+
+    .faq-punkt summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 18px;
+      cursor: pointer;
+      list-style: none;
+      font-size: 16.5px;
+      font-weight: 640;
+      letter-spacing: -.01em;
+    }
+
+    .faq-punkt summary::-webkit-details-marker { display: none; }
+
+    /* Das Plus dreht zum Kreuz — der Zustand ist ablesbar. */
+    .faq-punkt__plus {
+      flex: none;
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border-hell);
+      border-radius: 50%;
+      color: var(--gold-ink);
+      transition: transform 320ms var(--ease-out), border-color 240ms ease;
+    }
+
+    .faq-punkt__plus svg { width: 14px; height: 14px; }
+    .faq-punkt[open] .faq-punkt__plus { transform: rotate(45deg); border-color: var(--gold-ink); }
+
+    .faq-punkt > p {
+      max-width: 44rem;
+      margin: 0;
+      padding: 0 18px 18px;
+      font-size: 15.5px;
+      line-height: 1.7;
+      color: var(--muted-hell);
+      animation: faq-auf 380ms var(--ease-out) both;
+    }
+
+    @keyframes faq-auf {
+      from { opacity: 0; transform: translateY(-6px); }
+    }
+
+    /* ============ FUSSZEILE ============ */
+    /* Katalog-Vorbild „Footer Section": eine oben abgerundete dunkle
+       Platte mit Goldschein an der Oberkante, Marken-Block links,
+       Link-Spalten rechts. Die Spalten gehen mit Weichzeichner auf. */
+    .site-footer {
+      position: relative;
+      z-index: 10;
+      background: var(--hell-grund);
+      padding: 0 var(--gutter);
+    }
+
+    .fuss {
+      position: relative;
+      max-width: 76rem;
+      margin: 0 auto;
+      padding: clamp(44px, 6vw, 72px) clamp(22px, 4vw, 56px) max(32px, env(safe-area-inset-bottom));
+      border: 1px solid var(--line);
+      border-bottom: 0;
+      border-radius: calc(var(--radius) * 4) calc(var(--radius) * 4) 0 0;
+      background: var(--ink);
+      color: var(--mist);
+    }
+
+    /* Lichtschein hinter der Oberkante — die Quelle ist die Glanzlinie. */
+    .fuss::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(35% 128px at 50% 0%, rgba(198, 163, 93, .13), transparent);
+      pointer-events: none;
+    }
+
+    .fuss-glanz {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 33%;
+      height: 2px;
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      background: var(--gold);
+      filter: blur(3px);
+      opacity: .65;
+    }
+
+    .fuss-kopf { display: grid; gap: clamp(32px, 4vw, 48px); }
+
+    .fuss-marke { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+    .fuss-marke svg { width: 30px; height: 30px; color: var(--gold); }
+    .fuss-marke .micro { color: var(--paper); }
+    .fuss-copy { margin: 0; font-size: 13.5px; }
+
+    .fuss-spalten {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 30px;
+    }
+
+    .fuss-spalte h2 { margin: 0 0 14px; color: var(--paper); }
+
+    .fuss-spalte ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 4px;
+      font-size: 14px;
+    }
+
+    .fuss-spalte a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      color: inherit;
+      text-decoration: none;
+      transition: color 300ms ease, transform 300ms var(--ease-out);
+    }
+
+    .fuss-spalte a:hover { color: var(--gold); transform: translateX(3px); }
+    .fuss-spalte a svg { width: 16px; height: 16px; flex: none; }
+
+    /* Kanäle kennt nur der Betrieb — sichtbar als offener Punkt markiert. */
+    .fuss-sozial-hinweis { margin: 12px 0 0; font-size: 10px; opacity: .75; }
+
+    @media (min-width: 700px) { .fuss-spalten { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    @media (min-width: 1100px) { .fuss-kopf { grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr); align-items: start; } }
+
+    /* Aufgehen nach der Vorlage: leicht von oben, aus der Unschärfe. */
+    .site-footer .aufgehen {
+      transform: translateY(-10px);
+      filter: blur(4px);
+      transition: opacity 800ms var(--ease-out), transform 800ms var(--ease-out), filter 800ms var(--ease-out);
+      transition-delay: var(--staffel, 0ms);
+    }
+
+    .site-footer .aufgehen.ist-da { filter: blur(0); }
+
+    .legal {
+      margin-top: 30px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+      display: grid;
+      gap: 26px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .legal h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--paper); }
+    .legal p { margin: 0; }
+
+    /* Nur der Auftraggeber kennt diese Angaben — sichtbar markierte Lücken. */
+    .gap {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px dashed rgba(198, 163, 93, .6);
+      color: var(--gold);
+      font-family: var(--data);
+      font-size: 11.5px;
+    }
+
+    /* ============ STATISCHE VARIANTE (prefers-reduced-motion) ============ */
+    .static-story { display: none; }
+
+    /* ============ MOBIL ============ */
+    @media (max-width: 780px) {
+      :root { --gutter: 20px; }
+
+      .sequence { height: 760vh; }
+
+      /* Der Kader liegt als Filmstreifen im oberen Drittel; Text darunter. */
+      .stage__scrim {
+        background:
+          linear-gradient(0deg, rgba(19, 17, 16, .9) 0%, rgba(19, 17, 16, .42) 34%, transparent 52%),
+          linear-gradient(180deg, rgba(19, 17, 16, .5) 0%, transparent 24%);
+      }
+
+      .chapter {
+        grid-template-columns: 1fr;
+        align-content: end;
+        padding: 76px var(--gutter) 108px;
+      }
+
+      .chapter__copy,
+      .chapter--hero .chapter__copy,
+      .chapter--left .chapter__copy,
+      .chapter--right .chapter__copy,
+      .chapter--final .chapter__copy {
+        grid-column: 1 / -1;
+        padding-bottom: 0;
+      }
+
+      /* Der Text steht mobil auf ruhigem dunklem Grund — der lokale
+         Schleier würde dort als Kasten sichtbar. */
+      .chapter__copy::before { display: none; }
+
+      .chapter__eyebrow { margin-bottom: 12px; }
+      .chapter__title { font-size: clamp(27px, 7.6vw, 40px); }
+      .chapter--hero .chapter__title { font-size: clamp(34px, 9.6vw, 52px); }
+      .chapter__deck { margin-top: 14px; font-size: 15.5px; max-width: 34rem; }
+      .chapter__list { columns: 1; margin-top: 16px; }
+      .chapter__list li { padding: 7px 0; font-size: 13.5px; }
+      .cta { margin-top: 20px; min-height: 50px; gap: 22px; }
+
+      .pfeile { bottom: max(16px, env(safe-area-inset-bottom)); }
+      .pfeil { width: 48px; height: 48px; }
+
+      .trust-list li { grid-template-columns: 1fr; gap: 4px; }
+      .standort { grid-template-columns: 1fr; }
+      .standort-fakten li { grid-template-columns: 1fr; gap: 2px; }
+      /* Die Plakette würde mobil Ortsnamen verdecken — die Angabe steht
+         dort bereits in den Fakten darüber. */
+      .standort-karte__badge { display: none; }
+      .stills { grid-template-columns: 1fr; }
+      /* Karussell mobil: Bild oben, Text darunter, Leisten zweizeilig. */
+      .karussell__folie { grid-template-columns: 1fr; gap: 20px; }
+      .karussell__bild { order: -1; }
+      .karussell__fortschritt { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .contact-form { grid-template-columns: 1fr; }
+    }
+
+    /* ============ REDUZIERTE BEWEGUNG ============ */
+    /* JS setzt :root.ruhig bei prefers-reduced-motion oder ?ruhig in der URL.
+       Die Filmsequenz entfällt; dieselben Inhalte stehen ruhig untereinander,
+       die Verwandlung wird als Vorher/Nachher gezeigt. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
+    :root.ruhig .sequence, :root.ruhig .loader { display: none; }
+    :root.ruhig body.is-loading { overflow: auto; }
+
+    :root.ruhig .static-story {
+      display: block;
+      position: relative;
+      z-index: 5;
+      padding: calc(112px + max(14px, env(safe-area-inset-top))) var(--gutter) clamp(60px, 8vw, 110px);
+      background: var(--ink);
+    }
+
+    :root.ruhig .static-story .chapter-static {
+      max-width: 62rem;
+      padding: clamp(40px, 6vw, 72px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    :root.ruhig .static-story .chapter-static:last-child { border-bottom: 0; }
+
+    :root.ruhig .static-story h1,
+    :root.ruhig .static-story h2 {
+      margin: 0;
+      font-size: clamp(30px, 4.4vw, 60px);
+      font-weight: 710;
+      letter-spacing: -.028em;
+      line-height: 1.05;
+      text-wrap: balance;
+    }
+
+    :root.ruhig .static-story .chapter__eyebrow {
+      margin-bottom: 16px;
+      /* Auf ruhigem Dunkelgrund braucht das Etikett keinen Leseschatten —
+         der würde dort als Schleier stehen. */
+      text-shadow: none;
+    }
+
+    /* Ohne Kapitel-Animation steht der Akzentstrich sofort. */
+    :root.ruhig .static-story .chapter__eyebrow::before { transform: scaleX(1); }
+
+    :root.ruhig .static-story p {
+      max-width: 44ch;
+      margin: 20px 0 0;
+      font-size: clamp(16px, 1.3vw, 19px);
+      line-height: 1.78;
+      color: rgba(232, 227, 218, .9);
+    }
+
+    :root.ruhig .static-story .chapter__list { columns: 1; max-width: 34rem; }
+    :root.ruhig .static-story .chapter__list li { text-shadow: none; }
+
+    :root.ruhig .static-story .vergleich { margin-top: clamp(28px, 4vw, 48px); }
+  </style>
+</head>
+<body class="is-loading">
+  <div class="loader" id="loader" role="status" aria-label="Die Bildsequenz wird geladen">
+    <div class="loader__mark">
+      <p class="loader__word" data-i18n="l-wort">Aus Bestand wird<br><em>Zuhause.</em></p>
+      <p class="loader__meta micro" data-i18n="l-meta">Hauswerk — Sanierung &amp; Modernisierung<br>Eine Kamerafahrt · Fünf Phasen</p>
+    </div>
+    <div class="loader__foot">
+      <span class="micro" id="loader-label" data-i18n="l-label">Sequenz wird geladen</span>
+      <div class="loader__track" aria-hidden="true"><span class="loader__fill" id="loader-fill"></span></div>
+      <span class="micro" id="loader-count">000&nbsp;%</span>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <a class="site-header__brand" href="#top">Hauswerk<span class="site-header__sub micro" data-i18n="hero-eyebrow">Sanierung &amp; Modernisierung</span></a>
+    <div class="site-header__aktionen">
+      <button class="schalter micro" id="sprache-schalter" type="button" aria-label="Switch to English">EN</button>
+      <button class="schalter" id="theme-schalter" type="button" aria-label="Dunkles Design einschalten">
+        <svg class="schalter__mond" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 14.2A8.6 8.6 0 0 1 9.8 3.6a8.6 8.6 0 1 0 10.6 10.6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        <svg class="schalter__sonne" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.6"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="12" y1="2.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21.5"/><line x1="2.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21.5" y2="12"/><line x1="5.3" y1="5.3" x2="7" y2="7"/><line x1="17" y1="17" x2="18.7" y2="18.7"/><line x1="5.3" y1="18.7" x2="7" y2="17"/><line x1="17" y1="7" x2="18.7" y2="5.3"/></g></svg>
+      </button>
+      <button class="schalter schalter--menue" id="menue-schalter" type="button" aria-expanded="false" aria-controls="menue" aria-label="Menü öffnen oder schließen" data-i18n-aria="m-aria">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <line class="menue-strich menue-strich--oben" x1="4" y1="9" x2="20" y2="9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <line class="menue-strich menue-strich--unten" x1="4" y1="15" x2="20" y2="15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Vollbild-Menü: dunkles Glas über der Seite, die Kopfzeile bleibt
+       stehen (der Schließen-Schalter darf nicht wegfahren). -->
+  <nav class="menue" id="menue" aria-label="Hauptmenü">
+    <div class="menue__punkte">
+      <a class="menue__punkt menue__punkt--gold" href="termin.html" data-i18n="m-termin">Erstberatung vereinbaren</a>
+      <a class="menue__punkt" href="karriere.html" data-i18n="nav-karriere">Karriere</a>
+      <a class="menue__punkt" href="#referenzen" data-glatt data-i18n="m-referenzen">Referenzen</a>
+      <a class="menue__punkt" href="#vergleich" data-glatt data-i18n="m-vergleich">Vorher &amp; Nachher</a>
+      <a class="menue__punkt" href="#standort" data-glatt data-i18n="m-standort">Standort</a>
+      <a class="menue__punkt" href="#faq" data-glatt data-i18n="m-faq">FAQ</a>
+      <a class="menue__punkt" href="#kontakt" data-glatt data-i18n="m-kontakt">Kontakt</a>
+    </div>
+    <p class="menue__fuss micro">
+      <a href="#impressum" data-i18n="fu-imp">Impressum</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="#datenschutz" data-i18n="fu-ds">Datenschutz</a>
+    </p>
+  </nav>
+
+  <!-- Dock: begleitet den hellen Teil, sobald die Kamerafahrt durch ist. -->
+  <nav class="dock" id="dock" aria-label="Schnellnavigation" data-i18n-aria="dock-aria">
+    <div class="dock__leiste">
+      <a class="dock__punkt" href="#top" data-dock-anfang>
+        <span class="dock__label micro" data-i18n="fu-start">Startseite</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </a>
+      <a class="dock__punkt" href="termin.html">
+        <span class="dock__label micro" data-i18n="fu-termin">Termin buchen</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+      </a>
+      <a class="dock__punkt" href="#referenzen" data-glatt>
+        <span class="dock__label micro" data-i18n="m-referenzen">Referenzen</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+      </a>
+      <a class="dock__punkt" href="#standort" data-glatt>
+        <span class="dock__label micro" data-i18n="m-standort">Standort</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+      </a>
+      <a class="dock__punkt" href="#faq" data-glatt>
+        <span class="dock__label micro" data-i18n="m-faq">FAQ</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+      </a>
+      <a class="dock__punkt" href="#kontakt" data-glatt>
+        <span class="dock__label micro" data-i18n="m-kontakt">Kontakt</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+      </a>
+    </div>
+  </nav>
+
+  <main id="top">
+    <!-- ==================== SCROLL-SEQUENZ ==================== -->
+    <section class="sequence" id="sequence" aria-label="Scrollgesteuerte Kamerafahrt: ein Haus wird saniert">
+      <div class="stage" id="stage">
+        <canvas id="film-canvas" role="img" aria-label="Ein älteres Einfamilienhaus verwandelt sich beim Scrollen Schritt für Schritt in ein modern saniertes Zuhause."></canvas>
+        <div class="stage__scrim" aria-hidden="true"></div>
+        <div class="stage__warm" aria-hidden="true"></div>
+
+        <div class="chapters">
+          <article class="chapter chapter--hero" data-center="0.045" data-window="0.085">
+            <div class="chapter__copy">
+              <h1 class="chapter__title reveal"><span data-i18n="hero-h1">Wir machen mehr aus Ihrer Immobilie.</span></h1>
+              <p class="chapter__deck reveal"><span data-i18n="hero-deck">Professionelle Sanierung und Modernisierung – sorgfältig geplant, hochwertig umgesetzt und persönlich begleitet.</span></p>
+              <div class="reveal"><span><span class="cta-reihe">
+                <a class="cta" href="termin.html" data-i18n="hero-cta">Kostenlose Erstberatung vereinbaren</a>
+                <button class="cta cta--umriss" type="button" data-weiter data-i18n="hero-cta2">Ablauf ansehen</button>
+              </span>
+              <span class="cta-note micro" data-i18n="cta-note">Komplett kostenlos und unverbindlich.</span></span></div>
+            </div>
+          </article>
+
+          <article class="chapter chapter--right" data-center="0.30" data-window="0.075">
+            <div class="chapter__copy">
+              <h2 class="chapter__title reveal"><span data-i18n="a-h2">Gute Ergebnisse beginnen mit einer ehrlichen Bestandsaufnahme.</span></h2>
+              <p class="chapter__deck reveal"><span data-i18n="a-deck">Wir prüfen den Zustand Ihrer Immobilie, erkennen vorhandene Potenziale und zeigen Ihnen, welche Maßnahmen technisch und wirtschaftlich sinnvoll sind.</span></p>
+            </div>
+          </article>
+
+          <article class="chapter chapter--left" data-center="0.50" data-window="0.075">
+            <div class="chapter__copy">
+              <h2 class="chapter__title reveal"><span data-i18n="p-h2">Durchdacht geplant. Transparent umgesetzt.</span></h2>
+              <p class="chapter__deck reveal"><span data-i18n="p-deck">Aus Ihren Vorstellungen entsteht ein klarer Sanierungsplan – abgestimmt auf das Gebäude, Ihr Budget und Ihre langfristigen Ziele.</span></p>
+              <ul class="chapter__list reveal-list">
+                <li data-i18n="p-l1">Persönliche Beratung</li>
+                <li data-i18n="p-l2">Individuelle Projektplanung</li>
+                <li data-i18n="p-l3">Transparente Kostenaufstellung</li>
+                <li data-i18n="p-l4">Verlässlicher Zeitplan</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="chapter chapter--right" data-center="0.70" data-window="0.075">
+            <div class="chapter__copy">
+              <h2 class="chapter__title reveal"><span data-i18n="s-h2">Qualität zeigt sich in jedem Detail.</span></h2>
+              <p class="chapter__deck reveal"><span data-i18n="s-deck">Wir koordinieren die Arbeiten sorgfältig und setzen jedes Gewerk mit hohem Qualitätsanspruch um. Dabei achten wir auf langlebige Materialien, eine saubere Ausführung und reibungslose Abläufe.</span></p>
+              <ul class="chapter__list reveal-list">
+                <li data-i18n="s-l1">Fassaden- und Gebäudesanierung</li>
+                <li data-i18n="s-l2">Dacharbeiten</li>
+                <li data-i18n="s-l3">Fenster und Türen</li>
+                <li data-i18n="s-l4">Innenausbau</li>
+                <li data-i18n="s-l5">Energetische Modernisierung</li>
+                <li data-i18n="s-l6">Gestaltung der Außenbereiche</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="chapter chapter--left" data-center="0.862" data-window="0.052">
+            <div class="chapter__copy">
+              <h2 class="chapter__title reveal"><span data-i18n="m-h2">Mehr Komfort. Weniger Energieverbrauch. Dauerhaft mehr Wert.</span></h2>
+              <p class="chapter__deck reveal"><span data-i18n="m-deck">Eine professionelle Modernisierung verbessert nicht nur die Optik Ihrer Immobilie. Sie steigert die Energieeffizienz, erhöht den Wohnkomfort und trägt langfristig zum Werterhalt des Gebäudes bei.</span></p>
+            </div>
+          </article>
+
+          <article class="chapter chapter--final" data-center="0.968" data-window="0.045">
+            <div class="chapter__copy">
+              <p class="chapter__eyebrow micro" data-i18n="e-eyebrow">Das Ergebnis</p>
+              <h2 class="chapter__title reveal"><span data-i18n="e-h2">Ein Zuhause, das wieder zu Ihnen passt.</span></h2>
+              <p class="chapter__deck reveal"><span data-i18n="e-deck">Aus einer in die Jahre gekommenen Immobilie entsteht ein modernes, funktionales und hochwertiges Zuhause – fachgerecht umgesetzt und für die kommenden Jahrzehnte geplant.</span></p>
+              <div class="reveal"><span><a class="cta cta--umriss" href="#vergleich" data-glatt data-i18n="e-btn">Vorher &amp; Nachher vergleichen</a></span></div>
+            </div>
+          </article>
+        </div>
+
+        <!-- Kapitel-Pfeile: springen per Smooth-Scroll zum vorherigen bzw.
+             nächsten Abschnitt; die Kamerafahrt spielt dabei durch. -->
+        <nav class="pfeile" aria-label="Abschnitte durchblättern">
+          <button class="pfeil" id="pfeil-zurueck" type="button" aria-label="Zum vorherigen Abschnitt" data-i18n-aria="pfeil-z" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="14 6 8 12 14 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+          </button>
+          <button class="pfeil" id="pfeil-weiter" type="button" aria-label="Zum nächsten Abschnitt" data-i18n-aria="pfeil-w">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="10 6 16 12 10 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+          </button>
+        </nav>
+      </div>
+    </section>
+
+    <!-- ==================== STATISCHE VARIANTE (reduzierte Bewegung) ==================== -->
+    <section class="static-story" aria-label="Ein Haus wird saniert — Vorher und Nachher">
+      <article class="chapter-static">
+        <h1 data-i18n="hero-h1">Wir machen mehr aus Ihrer Immobilie.</h1>
+        <p data-i18n="hero-deck">Professionelle Sanierung und Modernisierung – sorgfältig geplant, hochwertig umgesetzt und persönlich begleitet.</p>
+        <a class="cta" href="termin.html" data-i18n="hero-cta">Kostenlose Erstberatung vereinbaren</a>
+        <span class="cta-note micro" data-i18n="cta-note">Komplett kostenlos und unverbindlich.</span>
+        <div class="vergleich" data-vergleich>
+          <img src="frames/desktop/frame-0001.webp" alt="Vorher: das Einfamilienhaus im Bestand mit verwitterter Fassade und altem Dach" width="1920" height="1080" loading="eager">
+          <div class="vergleich__nachher-halter" aria-hidden="true">
+            <img src="bilder/nachher-front.webp" alt="" width="1920" height="1080" loading="eager">
+          </div>
+          <div class="vergleich__griff" aria-hidden="true"></div>
+          <span class="vergleich__label vergleich__label--vorher micro" aria-hidden="true" data-i18n="vgl-vorher">Vorher</span>
+          <span class="vergleich__label vergleich__label--nachher micro" aria-hidden="true" data-i18n="vgl-nachher">Nachher</span>
+          <input class="vergleich__regler" type="range" min="0" max="100" step="0.5" value="50"
+                 aria-label="Vorher-Nachher-Vergleich: nach rechts schieben zeigt das sanierte Haus" data-i18n-aria="regler-aria">
+        </div>
+      </article>
+
+      <article class="chapter-static">
+        <h2 data-i18n="a-h2">Gute Ergebnisse beginnen mit einer ehrlichen Bestandsaufnahme.</h2>
+        <p data-i18n="a-deck">Wir prüfen den Zustand Ihrer Immobilie, erkennen vorhandene Potenziale und zeigen Ihnen, welche Maßnahmen technisch und wirtschaftlich sinnvoll sind.</p>
+      </article>
+
+      <article class="chapter-static">
+        <h2 data-i18n="p-h2">Durchdacht geplant. Transparent umgesetzt.</h2>
+        <p data-i18n="p-deck">Aus Ihren Vorstellungen entsteht ein klarer Sanierungsplan – abgestimmt auf das Gebäude, Ihr Budget und Ihre langfristigen Ziele.</p>
+        <ul class="chapter__list">
+          <li data-i18n="p-l1">Persönliche Beratung</li>
+          <li data-i18n="p-l2">Individuelle Projektplanung</li>
+          <li data-i18n="p-l3">Transparente Kostenaufstellung</li>
+          <li data-i18n="p-l4">Verlässlicher Zeitplan</li>
+        </ul>
+      </article>
+
+      <article class="chapter-static">
+        <h2 data-i18n="s-h2">Qualität zeigt sich in jedem Detail.</h2>
+        <p data-i18n="s-deck">Wir koordinieren die Arbeiten sorgfältig und setzen jedes Gewerk mit hohem Qualitätsanspruch um. Dabei achten wir auf langlebige Materialien, eine saubere Ausführung und reibungslose Abläufe.</p>
+        <ul class="chapter__list">
+          <li data-i18n="s-l1">Fassaden- und Gebäudesanierung</li>
+          <li data-i18n="s-l2">Dacharbeiten</li>
+          <li data-i18n="s-l3">Fenster und Türen</li>
+          <li data-i18n="s-l4">Innenausbau</li>
+          <li data-i18n="s-l5">Energetische Modernisierung</li>
+          <li data-i18n="s-l6">Gestaltung der Außenbereiche</li>
+        </ul>
+      </article>
+
+      <article class="chapter-static">
+        <h2 data-i18n="m-h2">Mehr Komfort. Weniger Energieverbrauch. Dauerhaft mehr Wert.</h2>
+        <p data-i18n="m-deck">Eine professionelle Modernisierung verbessert nicht nur die Optik Ihrer Immobilie. Sie steigert die Energieeffizienz, erhöht den Wohnkomfort und trägt langfristig zum Werterhalt des Gebäudes bei.</p>
+      </article>
+
+      <article class="chapter-static">
+        <p class="chapter__eyebrow micro" data-i18n="e-eyebrow">Das Ergebnis</p>
+        <h2 data-i18n="e-h2">Ein Zuhause, das wieder zu Ihnen passt.</h2>
+        <p data-i18n="e-deck">Aus einer in die Jahre gekommenen Immobilie entsteht ein modernes, funktionales und hochwertiges Zuhause – fachgerecht umgesetzt und für die kommenden Jahrzehnte geplant.</p>
+      </article>
+    </section>
+
+    <!-- ==================== HELLER TEIL ==================== -->
+    <div class="editorial">
+      <section aria-labelledby="vertrauen-titel">
+        <p class="editorial__eyebrow micro" data-i18n="v-eyebrow">Vertrauen</p>
+        <h2 id="vertrauen-titel" data-i18n="v-h2">Ein Ansprechpartner. Klare Abläufe. Verlässliche Qualität.</h2>
+        <p data-i18n="v-text">Wir begleiten Ihr Projekt persönlich und transparent – von der ersten Idee bis zur finalen Abnahme. Sie wissen jederzeit, was als Nächstes passiert und an wen Sie sich wenden können.</p>
+        <ul class="trust-list">
+          <li><strong data-i18n="v1s">Persönliche Projektbegleitung</strong><span data-i18n="v1t">Ein fester Ansprechpartner über das gesamte Projekt.</span></li>
+          <li><strong data-i18n="v2s">Nachvollziehbare Kosten</strong><span data-i18n="v2t">Jede Position aufgeschlüsselt, bevor sie entsteht.</span></li>
+          <li><strong data-i18n="v3s">Sorgfältige Ausführung</strong><span data-i18n="v3t">Jedes Gewerk mit hohem Qualitätsanspruch umgesetzt.</span></li>
+          <li><strong data-i18n="v4s">Verbindliche Absprachen</strong><span data-i18n="v4t">Was vereinbart ist, gilt — Termine wie Inhalte.</span></li>
+          <li><strong data-i18n="v5s">Transparenter Projektfortschritt</strong><span data-i18n="v5t">Sie sehen jederzeit, wo Ihr Projekt gerade steht.</span></li>
+        </ul>
+        <div class="vergleich" id="vergleich" data-vergleich>
+          <img src="frames/desktop/frame-0001.webp" alt="Vorher: das Einfamilienhaus im Bestand mit verwitterter Fassade und altem Dach" width="1920" height="1080" loading="lazy">
+          <div class="vergleich__nachher-halter" aria-hidden="true">
+            <img src="bilder/nachher-front.webp" alt="" width="1920" height="1080" loading="lazy">
+          </div>
+          <div class="vergleich__griff" aria-hidden="true"></div>
+          <span class="vergleich__label vergleich__label--vorher micro" aria-hidden="true" data-i18n="vgl-vorher">Vorher</span>
+          <span class="vergleich__label vergleich__label--nachher micro" aria-hidden="true" data-i18n="vgl-nachher">Nachher</span>
+          <input class="vergleich__regler" type="range" min="0" max="100" step="0.5" value="50"
+                 aria-label="Vorher-Nachher-Vergleich: nach rechts schieben zeigt das sanierte Haus" data-i18n-aria="regler-aria">
+        </div>
+      </section>
+
+      <section class="referenzen" id="referenzen" aria-labelledby="referenzen-titel">
+        <p class="editorial__eyebrow micro" data-i18n="r-eyebrow">Referenzen</p>
+        <h2 id="referenzen-titel" data-i18n="r-h2">Projekte, die für uns sprechen.</h2>
+        <p data-i18n="r-text">Vier Projekte aus Dresden und dem Umland — vom Gründerzeithaus bis zur energetischen Modernisierung. Beispielprojekte des Demo-Entwurfs; echte Referenzen ergänzt der Betrieb.</p>
+        <div class="karussell" data-karussell>
+          <div class="karussell__buehne">
+            <article class="karussell__folie ist-aktiv">
+              <div class="karussell__text">
+                <p class="karussell__nummer micro"><span class="karussell__nummer-linie" aria-hidden="true"></span>01&nbsp;/&nbsp;04</p>
+                <h3 class="karussell__titel" data-i18n="r1-titel">Stadtvilla aus der Gründerzeit</h3>
+                <p class="karussell__meta micro" data-i18n="r1-meta">Dresden-Striesen · 2025 · Fassade, Dach, Fenster</p>
+                <p class="karussell__beschreibung" data-i18n="r1-text">Stuckfassade aufgearbeitet, Dach neu eingedeckt, Fenster denkmalgerecht erneuert — in acht Monaten vom müden Altbau zum Schmuckstück der Straße.</p>
+              </div>
+              <figure class="karussell__bild">
+                <img src="bilder/referenz-stadtvilla.webp" alt="Sanierte Gründerzeit-Stadtvilla mit heller Stuckfassade und neuem anthrazitfarbenem Ziegeldach im Abendlicht" width="1600" height="900" loading="lazy">
+              </figure>
+            </article>
+            <article class="karussell__folie">
+              <div class="karussell__text">
+                <p class="karussell__nummer micro"><span class="karussell__nummer-linie" aria-hidden="true"></span>02&nbsp;/&nbsp;04</p>
+                <h3 class="karussell__titel" data-i18n="r2-titel">Vom 70er-Jahre-Haus zum Effizienzhaus</h3>
+                <p class="karussell__meta micro" data-i18n="r2-meta">Radebeul · 2024 · Energetische Modernisierung</p>
+                <p class="karussell__beschreibung" data-i18n="r2-text">Dämmung, Dreifachverglasung und Photovoltaik senken den Energiebedarf um rund 60 Prozent — gefördert, geplant und umgesetzt aus einer Hand.</p>
+              </div>
+              <figure class="karussell__bild">
+                <img src="bilder/referenz-energetisch.webp" alt="Energetisch modernisiertes Einfamilienhaus der 1970er mit weißer Dämmfassade, neuen Fenstern und Photovoltaik auf dem Dach" width="1600" height="900" loading="lazy">
+              </figure>
+            </article>
+            <article class="karussell__folie">
+              <div class="karussell__text">
+                <p class="karussell__nummer micro"><span class="karussell__nummer-linie" aria-hidden="true"></span>03&nbsp;/&nbsp;04</p>
+                <h3 class="karussell__titel" data-i18n="r3-titel">Neues Dach, neues Wohngefühl</h3>
+                <p class="karussell__meta micro" data-i18n="r3-meta">Radeberg · 2025 · Dachstuhl, Eindeckung, Gaube</p>
+                <p class="karussell__beschreibung" data-i18n="r3-text">Neuer Dachstuhl, anthrazitfarbene Ziegel und eine Flachdachgaube bringen Licht ins Dachgeschoss — dicht nach sechs Wochen, bewohnt während der gesamten Bauzeit.</p>
+              </div>
+              <figure class="karussell__bild">
+                <img src="bilder/referenz-dach.webp" alt="Haus mit komplett neu eingedecktem anthrazitfarbenem Ziegeldach und moderner Flachdachgaube in der Abenddämmerung" width="1600" height="900" loading="lazy">
+              </figure>
+            </article>
+            <article class="karussell__folie">
+              <div class="karussell__text">
+                <p class="karussell__nummer micro"><span class="karussell__nummer-linie" aria-hidden="true"></span>04&nbsp;/&nbsp;04</p>
+                <h3 class="karussell__titel" data-i18n="r4-titel">Der erste Eindruck, neu gebaut</h3>
+                <p class="karussell__meta micro" data-i18n="r4-meta">Freital · 2024 · Außenanlagen, Fassade</p>
+                <p class="karussell__beschreibung" data-i18n="r4-text">Fassade erneuert, Vorgarten mit Natursteinweg und Gartenlicht neu angelegt — der erste Eindruck trägt jetzt das ganze Haus.</p>
+              </div>
+              <figure class="karussell__bild">
+                <img src="bilder/referenz-aussen.webp" alt="Saniertes Reihenhaus in der Dämmerung mit neu angelegtem Vorgarten, Natursteinweg und warmer Gartenbeleuchtung" width="1600" height="900" loading="lazy">
+              </figure>
+            </article>
+          </div>
+          <div class="karussell__pfeile">
+            <button class="karussell__pfeil" type="button" data-karussell-zurueck aria-label="Voriges Projekt" data-i18n-aria="kar-z">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="karussell__pfeil" type="button" data-karussell-weiter aria-label="Nächstes Projekt" data-i18n-aria="kar-w">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <div class="karussell__fortschritt">
+            <button class="karussell__schritt ist-aktiv" type="button" aria-label="Projekt 1 anzeigen">
+              <span class="karussell__spur"><span class="karussell__fuellung"></span></span>
+              <span class="karussell__schritt-label micro" data-i18n="r1-titel">Stadtvilla aus der Gründerzeit</span>
+            </button>
+            <button class="karussell__schritt" type="button" aria-label="Projekt 2 anzeigen">
+              <span class="karussell__spur"><span class="karussell__fuellung"></span></span>
+              <span class="karussell__schritt-label micro" data-i18n="r2-titel">Vom 70er-Jahre-Haus zum Effizienzhaus</span>
+            </button>
+            <button class="karussell__schritt" type="button" aria-label="Projekt 3 anzeigen">
+              <span class="karussell__spur"><span class="karussell__fuellung"></span></span>
+              <span class="karussell__schritt-label micro" data-i18n="r3-titel">Neues Dach, neues Wohngefühl</span>
+            </button>
+            <button class="karussell__schritt" type="button" aria-label="Projekt 4 anzeigen">
+              <span class="karussell__spur"><span class="karussell__fuellung"></span></span>
+              <span class="karussell__schritt-label micro" data-i18n="r4-titel">Der erste Eindruck, neu gebaut</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="standort" id="standort" aria-labelledby="standort-titel">
+        <div class="standort__text">
+          <p class="editorial__eyebrow micro" data-i18n="st-eyebrow">Standort</p>
+          <h2 id="standort-titel" data-i18n="st-h2">Zuhause in Dresden.</h2>
+          <p data-i18n="st-text">Wir arbeiten dort, wo wir verwurzelt sind: in Dresden und im Umland. Kurze Wege bedeuten schnelle Termine, verlässliche Abstimmung und eine Baustelle, die wir jederzeit im Blick haben.</p>
+          <ul class="standort-fakten">
+            <li><strong data-i18n="st-f1s">Einzugsgebiet</strong><span data-i18n="st-f1t">Dresden und Umland — von Meißen bis Pirna, von Radeberg bis Freital.</span></li>
+            <li><strong data-i18n="st-f2s">Anschrift</strong><span><span class="gap" data-i18n="st-f2gap">Straße und Hausnummer folgen vom Betrieb</span></span></li>
+            <li><strong data-i18n="st-f3s">Termine</strong><span data-i18n="st-f3t">Nach Vereinbarung — am einfachsten über die kostenlose Erstberatung.</span></li>
+          </ul>
+        </div>
+        <div class="standort-karte-halter">
+          <figure class="standort-karte" data-kippkarte>
+            <a class="standort-karte__link" href="https://www.google.com/maps/dir/?api=1&amp;destination=Dresden" target="_blank" rel="noopener" aria-label="Route nach Dresden in Google Maps öffnen" data-i18n-aria="karte-aria">
+            <svg viewBox="0 0 640 430" role="img" aria-label="Stilisierte Karte von Dresden und Umland mit dem Einzugsgebiet des Betriebs">
+              <defs>
+                <pattern id="raster" width="26" height="26" patternUnits="userSpaceOnUse">
+                  <path d="M 26 0 L 0 0 0 26" fill="none" style="stroke: var(--hell-vg)" stroke-opacity=".06" stroke-width="1"/>
+                </pattern>
+              </defs>
+              <rect width="640" height="430" fill="url(#raster)"/>
+              <!-- Einzugsgebiet -->
+              <circle cx="330" cy="215" r="152" fill="rgba(198, 163, 93, .04)" style="stroke: var(--gold-ink)" stroke-opacity=".38" stroke-width="1.5" stroke-dasharray="5 7"/>
+              <!-- Elbe -->
+              <path d="M 648 372 C 575 332 522 306 470 272 C 428 245 382 236 330 215 C 278 194 254 172 215 142 C 176 112 118 84 56 44"
+                    fill="none" style="stroke: var(--karte-fluss)" stroke-opacity=".55" stroke-width="9" stroke-linecap="round"/>
+              <path d="M 648 372 C 575 332 522 306 470 272 C 428 245 382 236 330 215 C 278 194 254 172 215 142 C 176 112 118 84 56 44"
+                    fill="none" style="stroke: var(--karte-fluss-hell)" stroke-width="3" stroke-linecap="round"/>
+              <text x="468" y="300" style="fill: var(--karte-fluss)" font-size="11" letter-spacing="3" transform="rotate(24 468 300)">ELBE</text>
+              <!-- Umland -->
+              <g style="fill: var(--muted-hell)" font-size="11.5">
+                <circle cx="85" cy="70" r="4" style="stroke: var(--paper-card)" stroke-width="1.5"/><text x="97" y="66">Meißen</text>
+                <circle cx="215" cy="142" r="4" style="stroke: var(--paper-card)" stroke-width="1.5"/><text x="227" y="138">Radebeul</text>
+                <circle cx="470" cy="92" r="4" style="stroke: var(--paper-card)" stroke-width="1.5"/><text x="482" y="88">Radeberg</text>
+                <circle cx="255" cy="318" r="4" style="stroke: var(--paper-card)" stroke-width="1.5"/><text x="211" y="343">Freital</text>
+                <circle cx="512" cy="290" r="4" style="stroke: var(--paper-card)" stroke-width="1.5"/><text x="466" y="276">Heidenau</text>
+                <circle cx="588" cy="330" r="4" style="stroke: var(--paper-card)" stroke-width="1.5"/><text x="566" y="355">Pirna</text>
+              </g>
+              <!-- Dresden -->
+              <circle class="standort-puls" cx="330" cy="215" r="9" fill="none" stroke="#c6a35d" stroke-width="2"/>
+              <circle cx="330" cy="215" r="7" fill="#c6a35d" style="stroke: var(--paper-card)" stroke-width="2.5"/>
+              <text x="344" y="207" style="fill: var(--hell-vg)" font-size="14" font-weight="700">Dresden</text>
+            </svg>
+            </a>
+            <span class="standort-karte__badge micro"><span class="standort-karte__punkt" aria-hidden="true"></span><span data-i18n="st-badge">Einzugsgebiet&nbsp;≈&nbsp;40&nbsp;km</span></span>
+            <figcaption class="standort-karte__fuss">
+              <strong>Dresden</strong>
+              <span class="micro">51.0504°&nbsp;N&nbsp;·&nbsp;13.7373°&nbsp;O</span>
+              <a class="standort-route micro" href="https://www.google.com/maps/dir/?api=1&amp;destination=Dresden" target="_blank" rel="noopener" data-i18n="st-route">Route in Google Maps planen&nbsp;↗</a>
+              <span class="standort-karte__linie" aria-hidden="true"></span>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="contact" id="kontakt" aria-labelledby="kontakt-titel">
+        <p class="editorial__eyebrow micro" data-i18n="ko-eyebrow">Kostenlose Erstberatung</p>
+        <h2 id="kontakt-titel" data-i18n="ko-h2">Welche Möglichkeiten stecken in Ihrer Immobilie?</h2>
+        <p data-i18n="ko-text">Erzählen Sie uns von Ihrem Vorhaben. Wir prüfen Ihre Ausgangssituation ehrlich und zeigen Ihnen die nächsten sinnvollen Schritte.</p>
+        <form class="contact-form" id="contact-form" novalidate>
+          <div class="field">
+            <label class="micro" for="f-name" data-i18n="ko-l1">Ihr Name</label>
+            <input id="f-name" name="name" type="text" autocomplete="name" required>
+          </div>
+          <div class="field">
+            <label class="micro" for="f-mail" data-i18n="ko-l2">E-Mail oder Telefon</label>
+            <input id="f-mail" name="kontakt" type="text" autocomplete="email" required>
+          </div>
+
+          <!-- Lead-Einordnung: Vorhaben als Pillen, Budget als Schieber —
+               die Anfrage kommt vorkategorisiert beim Betrieb an. -->
+          <div class="field field--wide">
+            <span class="micro feld-etikett" id="lead-art-etikett" data-i18n="ko-art">Was planen Sie?</span>
+            <div class="lead-pillen" role="radiogroup" aria-labelledby="lead-art-etikett">
+              <button class="pille" type="button" role="radio" aria-checked="false" data-i18n="ko-a1">Komplettsanierung</button>
+              <button class="pille" type="button" role="radio" aria-checked="false" data-i18n="ko-a2">Dach &amp; Fassade</button>
+              <button class="pille" type="button" role="radio" aria-checked="false" data-i18n="ko-a3">Innenausbau</button>
+              <button class="pille" type="button" role="radio" aria-checked="false" data-i18n="ko-a4">Energetische Modernisierung</button>
+              <button class="pille" type="button" role="radio" aria-checked="false" data-i18n="ko-a5">Außenanlagen</button>
+            </div>
+          </div>
+          <div class="field field--wide lead-budget">
+            <label class="micro" for="f-budget" data-i18n="ko-budget">Ungefähres Budget</label>
+            <input id="f-budget" name="budget" type="range" min="0" max="4" step="1" value="2">
+            <p class="lead-budget__wert" id="budget-wert" aria-hidden="true">75.000&nbsp;–&nbsp;150.000&nbsp;€</p>
+          </div>
+
+          <div class="field field--wide">
+            <label class="micro" for="f-msg" data-i18n="ko-l3">Ihr Vorhaben</label>
+            <textarea id="f-msg" name="nachricht" placeholder="Was möchten Sie sanieren oder modernisieren?" data-i18n-ph="ko-ph"></textarea>
+          </div>
+          <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+          <div class="contact-form__foot">
+            <button class="cta" type="submit" data-i18n="ko-btn">Anfrage senden</button>
+            <span class="cta-note micro" data-i18n="cta-note">Komplett kostenlos und unverbindlich.</span>
+          </div>
+        </form>
+      </section>
+
+      <section class="faq" id="faq" aria-labelledby="faq-titel">
+        <p class="editorial__eyebrow micro" data-i18n="f-eyebrow">Häufige Fragen</p>
+        <h2 id="faq-titel" data-i18n="f-h2">Gut zu wissen, bevor es losgeht.</h2>
+        <div class="faq-liste">
+          <details class="faq-punkt">
+            <summary><span data-i18n="f1q">Was kostet die Erstberatung?</span><span class="faq-punkt__plus" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></summary>
+            <p data-i18n="f1a">Nichts. Wir sehen uns Ihre Immobilie an, besprechen Ihre Ziele und sagen Ihnen ehrlich, welche Maßnahmen sinnvoll sind — kostenlos und unverbindlich.</p>
+          </details>
+          <details class="faq-punkt">
+            <summary><span data-i18n="f2q">Wie lange dauert eine Sanierung?</span><span class="faq-punkt__plus" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></summary>
+            <p data-i18n="f2a">Je nach Umfang: Einzelne Gewerke dauern oft zwei bis sechs Wochen, eine Komplettsanierung meist vier bis acht Monate. Ihren verbindlichen Zeitplan erhalten Sie vor Baubeginn.</p>
+          </details>
+          <details class="faq-punkt">
+            <summary><span data-i18n="f3q">Kann ich während der Bauzeit wohnen bleiben?</span><span class="faq-punkt__plus" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></summary>
+            <p data-i18n="f3a">In den meisten Fällen ja. Wir planen die Bauabschnitte so, dass Bad, Küche und Schlafbereich so kurz wie möglich betroffen sind — und sagen Ihnen vorher genau, wann was passiert.</p>
+          </details>
+          <details class="faq-punkt">
+            <summary><span data-i18n="f4q">Helfen Sie bei Fördermitteln?</span><span class="faq-punkt__plus" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></summary>
+            <p data-i18n="f4a">Ja. Wir kennen die aktuellen KfW- und BAFA-Programme, rechnen durch, was sich für Ihr Vorhaben lohnt, und unterstützen Sie bei den Anträgen.</p>
+          </details>
+          <details class="faq-punkt">
+            <summary><span data-i18n="f5q">Bekomme ich alles aus einer Hand?</span><span class="faq-punkt__plus" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></summary>
+            <p data-i18n="f5a">Ja. Ein fester Ansprechpartner koordiniert alle Gewerke — von der Planung über die Ausführung bis zur Abnahme. Sie führen ein Gespräch, nicht zehn.</p>
+          </details>
+          <details class="faq-punkt">
+            <summary><span data-i18n="f6q">Wie sicher ist der Preis?</span><span class="faq-punkt__plus" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></summary>
+            <p data-i18n="f6a">Sie erhalten vor Baubeginn ein Festangebot mit aufgeschlüsselten Positionen. Mehrkosten entstehen nur, wenn Sie selbst Änderungen wünschen — nie stillschweigend.</p>
+          </details>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="fuss">
+      <span class="fuss-glanz" aria-hidden="true"></span>
+      <div class="fuss-kopf">
+        <div class="fuss-marke">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <p class="micro" data-i18n="fu-zeile">Hauswerk — Sanierung &amp; Modernisierung · Demo-Entwurf</p>
+          <p class="fuss-copy" data-i18n="fu-copy">© 2026 Hauswerk. Alle Rechte vorbehalten.</p>
+        </div>
+        <nav class="fuss-spalten" aria-label="Fußzeilen-Navigation">
+          <div class="fuss-spalte">
+            <h2 class="micro" data-i18n="fu-seiten">Seiten</h2>
+            <ul>
+              <li><a href="#top" data-i18n="fu-start">Startseite</a></li>
+              <li><a href="termin.html" data-i18n="fu-termin">Termin buchen</a></li>
+              <li><a href="karriere.html" data-i18n="nav-karriere">Karriere</a></li>
+            </ul>
+          </div>
+          <div class="fuss-spalte">
+            <h2 class="micro" data-i18n="fu-entdecken">Entdecken</h2>
+            <ul>
+              <li><a href="#referenzen" data-glatt data-i18n="m-referenzen">Referenzen</a></li>
+              <li><a href="#vergleich" data-glatt data-i18n="m-vergleich">Vorher &amp; Nachher</a></li>
+              <li><a href="#standort" data-glatt data-i18n="m-standort">Standort</a></li>
+              <li><a href="#faq" data-glatt data-i18n="m-faq">FAQ</a></li>
+              <li><a href="#kontakt" data-glatt data-i18n="m-kontakt">Kontakt</a></li>
+            </ul>
+          </div>
+          <div class="fuss-spalte">
+            <h2 class="micro" data-i18n="fu-recht">Rechtliches</h2>
+            <ul>
+              <li><a href="#impressum" data-i18n="fu-imp">Impressum</a></li>
+              <li><a href="#datenschutz" data-i18n="fu-ds">Datenschutz</a></li>
+            </ul>
+          </div>
+          <div class="fuss-spalte">
+            <h2 class="micro" data-i18n="fu-social">Social</h2>
+            <ul>
+              <li><a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>Facebook</a></li>
+              <li><a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>Instagram</a></li>
+              <li><a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/><path d="m10 15 5-3-5-3z"/></svg>YouTube</a></li>
+              <li><a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>LinkedIn</a></li>
+            </ul>
+            <p class="fuss-sozial-hinweis micro" data-i18n="fu-social-gap">Kanäle folgen vom Betrieb</p>
+          </div>
+        </nav>
+      </div>
+      <div class="legal">
+      <section id="impressum" aria-labelledby="impressum-titel">
+        <h2 id="impressum-titel" data-i18n="imp-h2">Impressum</h2>
+        <p data-i18n="imp-p">
+          Angaben gemäß § 5 DDG.<br>
+          Betrieb: <span class="gap">Firmenname folgt</span><br>
+          Anschrift: <span class="gap">Straße, PLZ, Ort folgen</span><br>
+          Vertreten durch: <span class="gap">Inhaber:in folgt</span><br>
+          Kontakt: <span class="gap">Telefon und E-Mail folgen</span><br>
+          USt-IdNr.: <span class="gap">folgt</span><br>
+          Diese Angaben werden vor Veröffentlichung vom Betrieb ergänzt — die Seite geht nicht live, solange eine Lücke offen ist.
+        </p>
+      </section>
+      <section id="datenschutz" aria-labelledby="datenschutz-titel">
+        <h2 id="datenschutz-titel" data-i18n="ds-h2">Datenschutz</h2>
+        <p data-i18n="ds-p">
+          Diese Seite lädt alle Schriften, Bilder und Skripte lokal — es werden keine Daten an Dritte übertragen und keine Cookies gesetzt.
+          Kontaktdaten aus dem Formular werden ausschließlich zur Bearbeitung der Anfrage verwendet.<br>
+          Verantwortliche Stelle und Hosting: <span class="gap">folgt vom Betrieb</span>
+        </p>
+      </section>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (() => {
+      "use strict";
+
+      /* Desktop: 236 Frames (5 Clips à ~48, Nahtstellen dedupliziert),
+         volle 1920er-Quellauflösung. Mobile: jedes zweite Frame, 118 Stück. */
+      const STORES = {
+        desktop: { directory: "frames/desktop", count: 236 },
+        mobile: { directory: "frames/mobile", count: 118 }
+      };
+      /* Clip-Grenzen als 0-basierte Desktop-Frame-Indizes: Phasenwechsel. */
+      const PHASE_STARTS = [0, 48, 95, 142, 189];
+      const FRAME_PAD = 4;
+      const LERP_FACTOR = 0.115;
+      const DWELL_WIDTH = 0.036;
+      const DWELL_PEAK = 2.5;
+      const LUT_SIZE = 2400;
+      const DWELL_CENTERS = [0.045, 0.30, 0.50, 0.70, 0.862, 0.968];
+
+      const sequence = document.getElementById("sequence");
+      const stage = document.getElementById("stage");
+      const canvas = document.getElementById("film-canvas");
+      const loader = document.getElementById("loader");
+      const loaderFill = document.getElementById("loader-fill");
+      const loaderCount = document.getElementById("loader-count");
+      const loaderLabel = document.getElementById("loader-label");
+      const pfeilZurueck = document.getElementById("pfeil-zurueck");
+      const pfeilWeiter = document.getElementById("pfeil-weiter");
+      const chapters = Array.from(document.querySelectorAll(".chapter"));
+      /* ?ruhig erzwingt die statische Fassung — zum Prüfen und Vorführen. */
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        || new URLSearchParams(window.location.search).has("ruhig");
+      if (reducedMotion) document.documentElement.classList.add("ruhig");
+      const mobileMedia = window.matchMedia("(max-width: 780px)");
+      const chapterVisibility = new WeakMap();
+
+      for (const store of Object.values(STORES)) {
+        store.images = new Array(store.count);
+        store.loaded = new Uint8Array(store.count);
+        store.promises = new Array(store.count);
+      }
+
+      let useMobileFrames = mobileMedia.matches;
+      let activeStore = useMobileFrames ? STORES.mobile : STORES.desktop;
+      let currentFrame = 0;
+      let targetFrame = 0;
+      let lastDrawn = -1;
+      let pageVisible = true;
+      let rafId = 0;
+      let sequenceTop = 0;
+      let sequenceDistance = 1;
+      let ctx = null;
+
+      function frameUrl(index, store) {
+        return `${store.directory}/frame-${String(index + 1).padStart(FRAME_PAD, "0")}.webp`;
+      }
+
+      function setLoaderProgress(ratio) {
+        const safe = Math.max(0, Math.min(1, ratio));
+        loaderFill.style.transform = `scaleX(${safe})`;
+        loaderCount.innerHTML = `${String(Math.round(safe * 100)).padStart(3, "0")}&nbsp;%`;
+      }
+
+      function loadFrame(index, store, retries = 1) {
+        if (store.loaded[index]) return Promise.resolve(store.images[index]);
+        if (store.promises[index]) return store.promises[index];
+        store.promises[index] = new Promise((resolve) => {
+          const attempt = (remaining) => {
+            const image = new Image();
+            store.images[index] = image;
+            image.decoding = "async";
+            image.onload = () => { store.loaded[index] = 1; resolve(image); };
+            image.onerror = () => {
+              if (remaining > 0) window.setTimeout(() => attempt(remaining - 1), 160);
+              else { store.images[index] = null; store.promises[index] = null; resolve(null); }
+            };
+            image.src = frameUrl(index, store);
+          };
+          attempt(retries);
+        });
+        return store.promises[index];
+      }
+
+      async function loadInBatches(indices, store, size = 8) {
+        for (let start = 0; start < indices.length; start += size) {
+          if (store !== activeStore) return; // Wechsel Desktop/Mobil bricht alte Kette ab
+          await Promise.all(indices.slice(start, start + size).map((i) => loadFrame(i, store)));
+        }
+      }
+
+      function nearestLoaded(index, store) {
+        if (store.loaded[index]) return index;
+        for (let d = 1; d < store.count; d += 1) {
+          if (index - d >= 0 && store.loaded[index - d]) return index - d;
+          if (index + d < store.count && store.loaded[index + d]) return index + d;
+        }
+        return -1;
+      }
+
+      function resizeCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const width = Math.round(stage.clientWidth * dpr);
+        const height = Math.round(stage.clientHeight * dpr);
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+          lastDrawn = -1;
+        }
+      }
+
+      function drawFrame(index) {
+        const clamped = Math.max(0, Math.min(activeStore.count - 1, index));
+        const resolved = nearestLoaded(clamped, activeStore);
+        if (resolved < 0 || resolved === lastDrawn) return;
+        const image = activeStore.images[resolved];
+        if (!image || !image.naturalWidth) return;
+
+        const width = canvas.width;
+        const height = canvas.height;
+        ctx.fillStyle = "#131110";
+        ctx.fillRect(0, 0, width, height);
+
+        let scale, drawWidth, drawHeight, x, y;
+        if (useMobileFrames) {
+          /* Mobil: Kader in voller Breite als Filmstreifen im oberen Drittel —
+             so bleibt das ganze Haus sichtbar statt eines Beschnitts. */
+          scale = width / image.naturalWidth;
+          drawWidth = width;
+          drawHeight = image.naturalHeight * scale;
+          x = 0;
+          y = height * 0.36 - drawHeight / 2;
+        } else {
+          scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+          drawWidth = image.naturalWidth * scale;
+          drawHeight = image.naturalHeight * scale;
+          x = (width - drawWidth) / 2;
+          y = (height - drawHeight) / 2;
+        }
+        ctx.drawImage(image, x, y, drawWidth, drawHeight);
+        lastDrawn = resolved;
+      }
+
+      /* Dwell-Remap: um Kapitelzentren verlangsamt die Wiedergabe leicht,
+         damit Text lesbar ankommt, ohne dass die Fahrt anhält. */
+      const rawAtEffective = new Float64Array(LUT_SIZE + 1);
+
+      function buildDwellLut() {
+        let total = 0;
+        const density = new Float64Array(LUT_SIZE + 1);
+        for (let i = 0; i <= LUT_SIZE; i += 1) {
+          const effective = i / LUT_SIZE;
+          let value = 1;
+          for (const center of DWELL_CENTERS) {
+            const delta = (effective - center) / DWELL_WIDTH;
+            value += DWELL_PEAK * Math.exp(-0.5 * delta * delta);
+          }
+          density[i] = value;
+          if (i > 0) total += (density[i - 1] + value) * 0.5;
+          rawAtEffective[i] = total;
+        }
+        for (let i = 0; i <= LUT_SIZE; i += 1) rawAtEffective[i] /= total;
+      }
+
+      function remapProgress(raw) {
+        let low = 0, high = LUT_SIZE;
+        while (low < high) {
+          const mid = (low + high) >> 1;
+          if (rawAtEffective[mid] < raw) low = mid + 1;
+          else high = mid;
+        }
+        const index = Math.max(1, low);
+        const left = rawAtEffective[index - 1];
+        const span = (rawAtEffective[index] - left) || 1;
+        return Math.max(0, Math.min(1, (index - 1 + (raw - left) / span) / LUT_SIZE));
+      }
+
+      function updateSequenceMetrics() {
+        const rect = sequence.getBoundingClientRect();
+        sequenceTop = window.scrollY + rect.top;
+        sequenceDistance = Math.max(1, rect.height - window.innerHeight);
+      }
+
+      function rawScrollProgress() {
+        return Math.max(0, Math.min(1, (window.scrollY - sequenceTop) / sequenceDistance));
+      }
+
+      function updateChapters(effective) {
+        for (const chapter of chapters) {
+          const center = Number(chapter.dataset.center);
+          const windowSize = Number(chapter.dataset.window);
+          const visible = Math.abs(effective - center) <= windowSize;
+          if (chapterVisibility.get(chapter) !== visible) {
+            chapterVisibility.set(chapter, visible);
+            chapter.classList.toggle("is-visible", visible);
+            chapter.setAttribute("aria-hidden", String(!visible));
+          }
+        }
+      }
+
+      function phaseForEffective(effective) {
+        /* Phasengrenzen aus den Clip-Grenzen der Desktop-Sequenz. */
+        const frame = effective * (STORES.desktop.count - 1);
+        let phase = 0;
+        for (let i = PHASE_STARTS.length - 1; i >= 0; i -= 1) {
+          if (frame >= PHASE_STARTS[i]) { phase = i; break; }
+        }
+        return phase;
+      }
+
+      function updateInterface(raw, effective, frame) {
+        /* Die Farbwelt wird ab der Sanierung wärmer und endet warm. */
+        const warmth = Math.max(0, Math.min(1, (effective - 0.62) / 0.3));
+        document.documentElement.style.setProperty("--warmth", warmth.toFixed(3));
+
+        /* Der Zurück-Pfeil ruht, solange die Fahrt noch am Anfang steht. */
+        const zurueckAus = effective <= DWELL_CENTERS[0] + 0.01;
+        if (pfeilZurueck.disabled !== zurueckAus) pfeilZurueck.disabled = zurueckAus;
+      }
+
+      /* Kapitel-Pfeile: Scrollziel ist die Rohposition, deren entzerrter Wert
+         im Kapitelzentrum landet (Umkehrung der Dwell-Tabelle). */
+      function rawForEffective(effective) {
+        const index = Math.round(Math.max(0, Math.min(1, effective)) * LUT_SIZE);
+        return rawAtEffective[index];
+      }
+
+      /* Eigenes sanftes Scrollen über rAF: unabhängig vom nativen
+         Smooth-Scroll (der in eingebetteten Ansichten fehlen kann), mit
+         Ease-out wie die übrigen Bewegungen. Rad oder Finger brechen ab,
+         reducedMotion springt direkt. */
+      let scrollAnim = 0;
+      function glattZu(zielY) {
+        cancelAnimationFrame(scrollAnim);
+        const start = window.scrollY;
+        const delta = zielY - start;
+        if (reducedMotion || Math.abs(delta) < 2) { window.scrollTo(0, zielY); return; }
+        const dauer = Math.min(1400, 500 + Math.abs(delta) * 0.1);
+        const beginn = performance.now();
+        const schritt = (jetzt) => {
+          const t = Math.min(1, (jetzt - beginn) / dauer);
+          window.scrollTo(0, Math.round(start + delta * (1 - Math.pow(1 - t, 3))));
+          if (t < 1) scrollAnim = requestAnimationFrame(schritt);
+        };
+        scrollAnim = requestAnimationFrame(schritt);
+      }
+      window.addEventListener("wheel", () => cancelAnimationFrame(scrollAnim), { passive: true });
+      window.addEventListener("touchstart", () => cancelAnimationFrame(scrollAnim), { passive: true });
+
+      function naechsterAbschnitt(richtung) {
+        const effective = remapProgress(rawScrollProgress());
+        let nearest = 0;
+        let abstand = Infinity;
+        DWELL_CENTERS.forEach((center, index) => {
+          const d = Math.abs(effective - center);
+          if (d < abstand) { abstand = d; nearest = index; }
+        });
+        const ziel = nearest + richtung;
+        if (ziel < 0) return;
+        if (ziel >= DWELL_CENTERS.length) {
+          const editorialBox = document.querySelector(".editorial").getBoundingClientRect();
+          glattZu(window.scrollY + editorialBox.top);
+          return;
+        }
+        glattZu(Math.round(sequenceTop + rawForEffective(DWELL_CENTERS[ziel]) * sequenceDistance));
+      }
+
+      function dismissLoader() {
+        setLoaderProgress(1);
+        loader.classList.add("is-done");
+        document.body.classList.remove("is-loading");
+        window.setTimeout(() => loader.remove(), 950);
+      }
+
+      function showLoadError() {
+        loaderLabel.textContent = "Bilder nicht erreichbar — Seite bitte neu laden";
+        loaderCount.textContent = "Fehler";
+      }
+
+      function tick() {
+        if (!pageVisible) return;
+        const raw = rawScrollProgress();
+        const effective = remapProgress(raw);
+        targetFrame = Math.round(effective * (activeStore.count - 1));
+        currentFrame += (targetFrame - currentFrame) * LERP_FACTOR;
+        if (Math.abs(targetFrame - currentFrame) < 0.02) currentFrame = targetFrame;
+        const frame = Math.round(currentFrame);
+        drawFrame(frame);
+        updateChapters(effective);
+        updateInterface(raw, effective, frame);
+        rafId = requestAnimationFrame(tick);
+      }
+
+      async function init() {
+        ctx = canvas.getContext("2d", { alpha: false });
+        buildDwellLut();
+        resizeCanvas();
+        updateSequenceMetrics();
+        setLoaderProgress(0.05);
+
+        /* Erst die tragenden Frames: Anfang, Kapitelzentren, Clip-Grenzen, Ende.
+           Danach lädt der Rest gestaffelt nach. */
+        const count = activeStore.count;
+        const critical = Array.from(new Set([
+          0,
+          ...DWELL_CENTERS.map((c) => Math.round(c * (count - 1))),
+          ...PHASE_STARTS.map((f) => Math.round((f / (STORES.desktop.count - 1)) * (count - 1))),
+          count - 1
+        ])).sort((a, b) => a - b);
+
+        const first = await loadFrame(0, activeStore);
+        if (first) { drawFrame(0); setLoaderProgress(0.25); }
+
+        const tail = critical.filter((i) => i !== 0);
+        let prepared = 0;
+        await Promise.all(tail.map(async (index) => {
+          const image = await loadFrame(index, activeStore);
+          prepared += 1;
+          setLoaderProgress(0.25 + 0.7 * (prepared / tail.length));
+          return image;
+        }));
+
+        if (nearestLoaded(0, activeStore) < 0) { showLoadError(); return; }
+        drawFrame(0);
+        dismissLoader();
+        tick();
+
+        /* ?p=0.5 fährt beim Laden eine Scrollposition der Sequenz an,
+           ?ziel=kontakt einen Anker — für Prüf-Screenshots. */
+        const params = new URLSearchParams(window.location.search);
+        const startP = parseFloat(params.get("p"));
+        if (!Number.isNaN(startP)) {
+          window.__qa.goto(Math.max(0, Math.min(1, startP)));
+          window.__qa.settle();
+        } else if (params.get("ziel")) {
+          document.getElementById(params.get("ziel"))?.scrollIntoView();
+        }
+
+        const remaining = Array.from({ length: count }, (_, i) => i).filter((i) => !critical.includes(i));
+        loadInBatches(remaining, activeStore);
+      }
+
+      async function swapFrameSet(event) {
+        /* Wechsel Desktop/Mobil: Fortschritt bleibt, Frame-Index wird skaliert. */
+        const progress = activeStore.count > 1 ? currentFrame / (activeStore.count - 1) : 0;
+        useMobileFrames = event.matches;
+        activeStore = useMobileFrames ? STORES.mobile : STORES.desktop;
+        currentFrame = progress * (activeStore.count - 1);
+        targetFrame = currentFrame;
+        lastDrawn = -1;
+        resizeCanvas();
+        updateSequenceMetrics();
+        const frame = Math.round(currentFrame);
+        const image = await loadFrame(frame, activeStore);
+        if (image) drawFrame(frame);
+        const byDistance = Array.from({ length: activeStore.count }, (_, i) => i)
+          .sort((a, b) => Math.abs(a - frame) - Math.abs(b - frame));
+        loadInBatches(byDistance, activeStore);
+      }
+
+      /* Kopfzeile über dem hellen Teil: Papierton statt Blend-Modus, beim
+         Abwärtslesen fährt sie aus dem Weg, aufwärts (Richtung Menü) kommt
+         sie zurück. Läuft auch in der ruhigen Fassung. */
+      const header = document.querySelector(".site-header");
+      const editorial = document.querySelector(".editorial");
+      const dock = document.getElementById("dock");
+      let lastScrollY = window.scrollY;
+      function updateHeader() {
+        const y = window.scrollY;
+        const imLicht = y > editorial.offsetTop - 70;
+        header.classList.toggle("ist-licht", imLicht);
+        if (imLicht && y > lastScrollY + 2) header.classList.add("ist-versteckt");
+        else if (y < lastScrollY - 2 || !imLicht) header.classList.remove("ist-versteckt");
+        lastScrollY = y;
+        /* Das Dock erscheint, sobald die Kamerafahrt durch ist, und
+           begleitet den hellen Teil; zurück in der Fahrt taucht es ab. */
+        dock.classList.toggle("ist-da", editorial.getBoundingClientRect().top < window.innerHeight * .6);
+      }
+      window.addEventListener("scroll", updateHeader, { passive: true });
+      updateHeader();
+
+      /* ===== Menü: Vollbild-Overlay, Schalter dreht zum Kreuz ===== */
+      const menue = document.getElementById("menue");
+      const menueSchalter = document.getElementById("menue-schalter");
+      let menueOffen = false;
+
+      function setzeMenue(offen) {
+        menueOffen = offen;
+        menue.classList.toggle("ist-offen", offen);
+        menueSchalter.classList.toggle("ist-offen", offen);
+        menueSchalter.setAttribute("aria-expanded", String(offen));
+        document.body.classList.toggle("menue-offen", offen);
+      }
+
+      menueSchalter.addEventListener("click", () => setzeMenue(!menueOffen));
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && menueOffen) setzeMenue(false);
+      });
+      for (const punkt of menue.querySelectorAll("a")) {
+        punkt.addEventListener("click", () => setzeMenue(false));
+      }
+
+      /* ===== Dock: Symbole wachsen zum Zeiger hin =====
+         Katalog-Vorbild „Apple Style Dock" — der Abstand zum Zeiger
+         bestimmt die Größe (Ruhe 40 px, Maximum 66 px, Reichweite 150 px);
+         der CSS-Übergang glättet die Sprünge. Ruhelagen werden beim
+         Betreten gemessen, sonst flattert die Rechnung beim Wachsen. */
+      const dockLeiste = dock.querySelector(".dock__leiste");
+      const dockPunkte = Array.from(dock.querySelectorAll(".dock__punkt"));
+      let dockZentren = [];
+
+      if (!reducedMotion) {
+        dockLeiste.addEventListener("pointerenter", (event) => {
+          if (event.pointerType !== "mouse") return;
+          dockZentren = dockPunkte.map((punkt) => {
+            const box = punkt.getBoundingClientRect();
+            return box.left + box.width / 2;
+          });
+        });
+        dockLeiste.addEventListener("pointermove", (event) => {
+          if (event.pointerType !== "mouse" || !dockZentren.length) return;
+          dockPunkte.forEach((punkt, i) => {
+            const faktor = Math.max(0, 1 - Math.abs(event.clientX - dockZentren[i]) / 150);
+            const groesse = Math.round(40 + 26 * faktor);
+            punkt.style.width = groesse + "px";
+            punkt.style.height = groesse + "px";
+          });
+        });
+        dockLeiste.addEventListener("pointerleave", () => {
+          for (const punkt of dockPunkte) { punkt.style.width = ""; punkt.style.height = ""; }
+        });
+      }
+
+      /* „Anfang" fährt an den Dokumentanfang — die Mittelpunkt-Rechnung
+         der übrigen Anker wäre für das ganze Dokument falsch. */
+      for (const anfang of document.querySelectorAll("[data-dock-anfang]")) {
+        anfang.addEventListener("click", (event) => { event.preventDefault(); glattZu(0); });
+      }
+
+      pfeilZurueck.addEventListener("click", () => naechsterAbschnitt(-1));
+      pfeilWeiter.addEventListener("click", () => naechsterAbschnitt(1));
+
+      /* „Ablauf ansehen" blättert wie der Weiter-Pfeil ein Kapitel vor. */
+      for (const knopf of document.querySelectorAll("[data-weiter]")) {
+        knopf.addEventListener("click", () => naechsterAbschnitt(1));
+      }
+
+      /* Anker mit sanfter Fahrt (z. B. „Vorher & Nachher vergleichen"). */
+      for (const anker of document.querySelectorAll("a[data-glatt]")) {
+        anker.addEventListener("click", (event) => {
+          const ziel = document.querySelector(anker.getAttribute("href"));
+          if (!ziel) return;
+          event.preventDefault();
+          const box = ziel.getBoundingClientRect();
+          /* Ziel mittig ins Fenster, aber nie über den Dokumentanfang hinaus. */
+          glattZu(Math.max(0, window.scrollY + box.top - Math.max(0, (window.innerHeight - box.height) / 2)));
+        });
+      }
+
+      /* Vorher/Nachher-Schieber nach der Katalog-Mechanik (21st.dev
+         „Side By Side Slide"): die Trennlinie folgt dem Mauszeiger mit einer
+         Feder (k=300, d=30) und schwingt beim Verlassen zur Mitte zurück.
+         Touch und Pfeiltasten laufen weiter über den unsichtbaren Regler. */
+      for (const vergleich of document.querySelectorAll("[data-vergleich]")) {
+        const regler = vergleich.querySelector(".vergleich__regler");
+        const ruhePunkt = 50;
+        let pos = ruhePunkt;
+        let ziel = ruhePunkt;
+        let geschw = 0;
+        let laeuft = false;
+        let letztes = 0;
+        const setze = (wert) => vergleich.style.setProperty("--pos", wert + "%");
+
+        const feder = (jetzt) => {
+          const dt = Math.min(0.045, (jetzt - letztes) / 1000 || 0.016);
+          letztes = jetzt;
+          const kraft = (ziel - pos) * 300 - geschw * 30;
+          geschw += kraft * dt;
+          pos += geschw * dt;
+          if (Math.abs(ziel - pos) < 0.05 && Math.abs(geschw) < 0.05) {
+            pos = ziel;
+            geschw = 0;
+            laeuft = false;
+            setze(pos);
+            return;
+          }
+          setze(pos);
+          requestAnimationFrame(feder);
+        };
+
+        const starte = (neuesZiel) => {
+          ziel = Math.max(0, Math.min(100, neuesZiel));
+          if (reducedMotion) { pos = ziel; setze(pos); return; }
+          if (!laeuft) { laeuft = true; letztes = performance.now(); requestAnimationFrame(feder); }
+        };
+
+        vergleich.addEventListener("pointermove", (event) => {
+          if (event.pointerType !== "mouse") return;
+          const box = vergleich.getBoundingClientRect();
+          const pct = ((event.clientX - box.left) / box.width) * 100;
+          regler.value = pct;
+          starte(pct);
+        });
+
+        vergleich.addEventListener("pointerleave", (event) => {
+          if (event.pointerType !== "mouse") return;
+          regler.value = ruhePunkt;
+          starte(ruhePunkt);
+        });
+
+        regler.addEventListener("input", () => starte(Number(regler.value)));
+        setze(ruhePunkt);
+      }
+
+      /* ===== Referenzen-Karussell (Katalog-Vorbild „Elegant Carousel") =====
+         Der Takt hängt am animationend der Füll-Leiste: pausiert die
+         Animation (Zeiger liegt auf dem Karussell), pausiert damit auch
+         das Weiterblättern — Leiste und Wechsel bleiben immer synchron.
+         In der ruhigen Fassung läuft nichts von allein. */
+      const karussell = document.querySelector("[data-karussell]");
+      if (karussell) {
+        const folien = Array.from(karussell.querySelectorAll(".karussell__folie"));
+        const schritte = Array.from(karussell.querySelectorAll(".karussell__schritt"));
+        let aktiveFolie = 0;
+
+        function zeigeFolie(index) {
+          aktiveFolie = (index + folien.length) % folien.length;
+          folien.forEach((folie, i) => {
+            const aktiv = i === aktiveFolie;
+            folie.classList.toggle("ist-aktiv", aktiv);
+            folie.setAttribute("aria-hidden", String(!aktiv));
+          });
+          schritte.forEach((schritt, i) => {
+            schritt.classList.toggle("ist-aktiv", i === aktiveFolie);
+            schritt.classList.toggle("ist-vorbei", i < aktiveFolie);
+            if (i === aktiveFolie && !reducedMotion) {
+              /* Füllung neu starten: Animation abwerfen, Reflow, wieder an. */
+              const fuellung = schritt.querySelector(".karussell__fuellung");
+              fuellung.style.animation = "none";
+              void fuellung.offsetWidth;
+              fuellung.style.animation = "";
+            }
+          });
+        }
+
+        if (!reducedMotion) {
+          for (const schritt of schritte) {
+            schritt.querySelector(".karussell__fuellung")
+              .addEventListener("animationend", () => zeigeFolie(aktiveFolie + 1));
+          }
+          karussell.addEventListener("pointerenter", (event) => {
+            if (event.pointerType === "mouse") karussell.classList.add("ist-pausiert");
+          });
+          karussell.addEventListener("pointerleave", (event) => {
+            if (event.pointerType === "mouse") karussell.classList.remove("ist-pausiert");
+          });
+        }
+
+        karussell.querySelector("[data-karussell-zurueck]").addEventListener("click", () => zeigeFolie(aktiveFolie - 1));
+        karussell.querySelector("[data-karussell-weiter]").addEventListener("click", () => zeigeFolie(aktiveFolie + 1));
+        schritte.forEach((schritt, i) => schritt.addEventListener("click", () => zeigeFolie(i)));
+
+        /* Wischen blättert (Schwelle 60 px). */
+        let wischStart = 0;
+        karussell.addEventListener("touchstart", (event) => { wischStart = event.touches[0].clientX; }, { passive: true });
+        karussell.addEventListener("touchend", (event) => {
+          const delta = event.changedTouches[0].clientX - wischStart;
+          if (Math.abs(delta) > 60) zeigeFolie(aktiveFolie + (delta < 0 ? 1 : -1));
+        }, { passive: true });
+
+        zeigeFolie(0);
+      }
+
+      /* Standort-Karte: leichte 3D-Neigung zum Zeiger, weich nachgeführt
+         (Katalog-Vorbild „Location Map"). */
+      const kippkarte = document.querySelector("[data-kippkarte]");
+      if (kippkarte && !reducedMotion) {
+        const halter = kippkarte.parentElement;
+        let zielX = 0, zielY = 0, istX = 0, istY = 0, kippt = false;
+        const neige = () => {
+          istX += (zielX - istX) * 0.14;
+          istY += (zielY - istY) * 0.14;
+          kippkarte.style.transform = `rotateX(${istY.toFixed(2)}deg) rotateY(${istX.toFixed(2)}deg)`;
+          if (Math.abs(zielX - istX) > 0.04 || Math.abs(zielY - istY) > 0.04) {
+            requestAnimationFrame(neige);
+          } else {
+            kippt = false;
+          }
+        };
+        const starteNeigung = () => { if (!kippt) { kippt = true; requestAnimationFrame(neige); } };
+        halter.addEventListener("pointermove", (event) => {
+          if (event.pointerType !== "mouse") return;
+          const box = kippkarte.getBoundingClientRect();
+          zielX = ((event.clientX - (box.left + box.width / 2)) / (box.width / 2)) * 6;
+          zielY = -((event.clientY - (box.top + box.height / 2)) / (box.height / 2)) * 6;
+          starteNeigung();
+        });
+        halter.addEventListener("pointerleave", () => { zielX = 0; zielY = 0; starteNeigung(); });
+      }
+
+      /* ===== Sprache (DE/EN) und Theme (hell/dunkel) ===== */
+      const EN = {
+        "l-wort": "From worn-out<br><em>to home.</em>",
+        "l-meta": "Hauswerk — Renovation &amp; Modernisation<br>One camera journey · Five phases",
+        "l-label": "Loading sequence",
+        "k-cta": "Book a free<br>consultation",
+        "hero-eyebrow": "Renovation &amp; Modernisation",
+        "hero-h1": "We make more of your property.",
+        "hero-deck": "Professional renovation and modernisation – carefully planned, expertly built and personally managed.",
+        "hero-cta": "Book a free initial consultation",
+        "hero-cta2": "See how we work",
+        "cta-note": "Completely free and without obligation.",
+        "a-h2": "Good results start with an honest assessment.",
+        "a-deck": "We examine the condition of your property, identify its potential and show you which measures make technical and economic sense.",
+        "p-h2": "Thoughtfully planned. Transparently built.",
+        "p-deck": "Your ideas become a clear renovation plan – aligned with the building, your budget and your long-term goals.",
+        "p-l1": "Personal consultation", "p-l2": "Individual project planning",
+        "p-l3": "Transparent cost breakdown", "p-l4": "Reliable schedule",
+        "s-h2": "Quality shows in every detail.",
+        "s-deck": "We coordinate every trade carefully and build to a high standard – durable materials, clean execution, smooth processes.",
+        "s-l1": "Facade and building renovation", "s-l2": "Roof work", "s-l3": "Windows and doors",
+        "s-l4": "Interior fit-out", "s-l5": "Energy-efficient modernisation", "s-l6": "Outdoor areas and landscaping",
+        "m-h2": "More comfort. Less energy. Lasting value.",
+        "m-deck": "A professional modernisation improves more than looks: it raises energy efficiency, increases everyday comfort and protects the long-term value of your home.",
+        "e-eyebrow": "The result",
+        "e-h2": "A home that fits you again.",
+        "e-deck": "An ageing property becomes a modern, functional, high-quality home – expertly built and planned for the decades ahead.",
+        "e-btn": "Compare before &amp; after",
+        "v-eyebrow": "Trust",
+        "v-h2": "One contact. Clear processes. Reliable quality.",
+        "v-text": "We manage your project personally and transparently – from the first idea to the final acceptance. You always know what happens next and who to call.",
+        "v1s": "Personal project management", "v1t": "One dedicated contact for the entire project.",
+        "v2s": "Transparent costs", "v2t": "Every item itemised before it is incurred.",
+        "v3s": "Careful execution", "v3t": "Every trade built to a high standard.",
+        "v4s": "Binding agreements", "v4t": "What we agree stands – dates and scope alike.",
+        "v5s": "Visible progress", "v5t": "You always see where your project stands.",
+        "vgl-vorher": "Before", "vgl-nachher": "After",
+        "st-eyebrow": "Location",
+        "st-h2": "At home in Dresden.",
+        "st-text": "We work where we are rooted: in Dresden and the surrounding region. Short distances mean quick appointments, reliable coordination and a site we can reach at any time.",
+        "st-f1s": "Service area", "st-f1t": "Dresden and the surrounding region — from Meißen to Pirna, from Radeberg to Freital.",
+        "st-f2s": "Address", "st-f2gap": "Street address to be added by the company",
+        "st-f3s": "Appointments", "st-f3t": "By arrangement — easiest via the free initial consultation.",
+        "st-badge": "Service&nbsp;area&nbsp;≈&nbsp;40&nbsp;km",
+        "st-route": "Get directions on Google Maps&nbsp;↗",
+        "ko-eyebrow": "Free initial consultation",
+        "ko-h2": "What potential is hidden in your property?",
+        "ko-text": "Tell us about your plans. We will assess your starting point honestly and show you the next sensible steps.",
+        "ko-l1": "Your name", "ko-l2": "Email or phone", "ko-l3": "Your project",
+        "ko-art": "What are you planning?",
+        "ko-a1": "Full renovation", "ko-a2": "Roof &amp; facade", "ko-a3": "Interior fit-out",
+        "ko-a4": "Energy retrofit", "ko-a5": "Outdoor areas",
+        "ko-budget": "Approximate budget",
+        "m-termin": "Book a free consultation", "m-vergleich": "Before &amp; after",
+        "m-standort": "Location", "m-kontakt": "Contact",
+        "m-referenzen": "Projects", "m-faq": "FAQ",
+        "m-aria": "Open or close menu",
+        "dock-aria": "Quick navigation",
+        "kar-z": "Previous project", "kar-w": "Next project",
+        "r-eyebrow": "References",
+        "r-h2": "Projects that speak for us.",
+        "r-text": "Four projects from Dresden and the surrounding region — from a period townhouse to a full energy retrofit. Sample projects of this demo draft; real references will be added by the company.",
+        "r1-meta": "Dresden-Striesen · 2025 · Facade, roof, windows",
+        "r1-titel": "A period city villa, restored",
+        "r1-text": "Stucco facade restored, roof re-tiled, windows renewed in keeping with the period — from tired old building to the pride of the street in eight months.",
+        "r2-meta": "Radebeul · 2024 · Energy retrofit",
+        "r2-titel": "From 1970s house to efficient home",
+        "r2-text": "Insulation, triple glazing and photovoltaics cut energy demand by around 60 percent — funded, planned and built from a single source.",
+        "r3-meta": "Radeberg · 2025 · Roof structure, tiling, dormer",
+        "r3-titel": "A new roof, a new way to live",
+        "r3-text": "A new roof structure, anthracite tiles and a flat-roof dormer bring light into the attic — watertight after six weeks, inhabited throughout.",
+        "r4-meta": "Freital · 2024 · Outdoor areas, facade",
+        "r4-titel": "A first impression, rebuilt",
+        "r4-text": "Facade renewed, front garden relaid with a natural stone path and garden lighting — the first impression now carries the whole house.",
+        "f-eyebrow": "FAQ",
+        "f-h2": "Good to know before we start.",
+        "f1q": "What does the initial consultation cost?",
+        "f1a": "Nothing. We look at your property, discuss your goals and tell you honestly which measures make sense — free and without obligation.",
+        "f2q": "How long does a renovation take?",
+        "f2a": "It depends on the scope: single trades often take two to six weeks, a full renovation usually four to eight months. You receive a binding schedule before construction starts.",
+        "f3q": "Can I stay in the house during construction?",
+        "f3a": "In most cases, yes. We plan the phases so that bathroom, kitchen and bedroom are affected as briefly as possible — and tell you in advance exactly what happens when.",
+        "f4q": "Do you help with funding programmes?",
+        "f4a": "Yes. We know the current KfW and BAFA programmes, work out what pays off for your project and support you with the applications.",
+        "f5q": "Do I get everything from a single source?",
+        "f5a": "Yes. One dedicated contact coordinates all trades — from planning through execution to acceptance. You have one conversation, not ten.",
+        "f6q": "How reliable is the price?",
+        "f6a": "You receive a fixed offer with itemised positions before construction begins. Extra costs only arise if you request changes yourself — never silently.",
+        "ko-ph": "What would you like to renovate or modernise?",
+        "ko-btn": "Send enquiry",
+        "fu-zeile": "Hauswerk — Renovation &amp; Modernisation · Demo draft",
+        "fu-imp": "Legal notice", "fu-ds": "Privacy",
+        "nav-karriere": "Careers", "fu-termin": "Book appointment",
+        "fu-copy": "© 2026 Hauswerk. All rights reserved.",
+        "fu-seiten": "Pages", "fu-start": "Home", "fu-entdecken": "Explore",
+        "fu-recht": "Legal", "fu-social": "Social",
+        "fu-social-gap": "Channels to follow from the company",
+        "imp-h2": "Legal notice",
+        "imp-p": 'Information according to § 5 DDG (German law).<br>Company: <span class="gap">name to follow</span><br>Address: <span class="gap">street, postcode and city to follow</span><br>Represented by: <span class="gap">owner to follow</span><br>Contact: <span class="gap">phone and email to follow</span><br>VAT ID: <span class="gap">to follow</span><br>These details will be added by the company before publication — the site does not go live while a gap remains.',
+        "ds-h2": "Privacy",
+        "ds-p": 'This site loads all fonts, images and scripts locally — no data is sent to third parties and no cookies are set. Contact details from the form are used solely to answer your enquiry.<br>Controller and hosting: <span class="gap">to follow from the company</span>',
+        "pfeil-z": "Previous section", "pfeil-w": "Next section",
+        "regler-aria": "Before/after comparison: slide right to reveal the renovated house",
+        "karte-aria": "Open directions to Dresden on Google Maps"
+      };
+      const TITEL = { de: "HAUSWERK — Sanierung & Modernisierung", en: "HAUSWERK — Renovation & Modernisation" };
+      const originale = new Map();
+      let sprache = localStorage.getItem("hauswerk-sprache") === "en" ? "en" : "de";
+      const spracheSchalter = document.getElementById("sprache-schalter");
+      const themeSchalter = document.getElementById("theme-schalter");
+
+      function wendeSpracheAn() {
+        document.documentElement.lang = sprache;
+        document.title = TITEL[sprache];
+        for (const el of document.querySelectorAll("[data-i18n]")) {
+          if (!originale.has(el)) originale.set(el, el.innerHTML);
+          const en = EN[el.dataset.i18n];
+          if (en) el.innerHTML = sprache === "en" ? en : originale.get(el);
+        }
+        for (const el of document.querySelectorAll("[data-i18n-ph]")) {
+          if (!originale.has(el)) originale.set(el, el.placeholder);
+          const en = EN[el.dataset.i18nPh];
+          if (en) el.placeholder = sprache === "en" ? en : originale.get(el);
+        }
+        for (const el of document.querySelectorAll("[data-i18n-aria]")) {
+          if (!originale.has(el)) originale.set(el, el.getAttribute("aria-label"));
+          const en = EN[el.dataset.i18nAria];
+          if (en) el.setAttribute("aria-label", sprache === "en" ? en : originale.get(el));
+        }
+        spracheSchalter.textContent = sprache === "en" ? "DE" : "EN";
+        spracheSchalter.setAttribute("aria-label", sprache === "en" ? "Auf Deutsch umschalten" : "Switch to English");
+      }
+
+      spracheSchalter.addEventListener("click", () => {
+        sprache = sprache === "en" ? "de" : "en";
+        localStorage.setItem("hauswerk-sprache", sprache);
+        wendeSpracheAn();
+      });
+      if (sprache === "en") wendeSpracheAn();
+
+      let dunkel = localStorage.getItem("hauswerk-theme") === "dunkel";
+      function wendeThemeAn() {
+        document.documentElement.classList.toggle("dunkel", dunkel);
+        themeSchalter.setAttribute("aria-label", dunkel
+          ? (sprache === "en" ? "Switch to light design" : "Helles Design einschalten")
+          : (sprache === "en" ? "Switch to dark design" : "Dunkles Design einschalten"));
+      }
+      themeSchalter.addEventListener("click", () => {
+        dunkel = !dunkel;
+        localStorage.setItem("hauswerk-theme", dunkel ? "dunkel" : "hell");
+        wendeThemeAn();
+      });
+      if (dunkel) wendeThemeAn();
+
+      /* ===== Kontakt- und Lead-Formular =====
+         Vorhaben (Pillen) und Budget (Schieber) ordnen die Anfrage ein,
+         bevor sie den Betrieb erreicht — die Bestätigung nennt die
+         Einordnung. Versendet wird in der finalen Fassung über den Betrieb. */
+      const form = document.getElementById("contact-form");
+      const formStatus = document.getElementById("form-status");
+      const pillen = Array.from(document.querySelectorAll(".pille"));
+      const budget = document.getElementById("f-budget");
+      const budgetWert = document.getElementById("budget-wert");
+      const BUDGETS = {
+        de: ["bis 25.000 €", "25.000 – 75.000 €", "75.000 – 150.000 €", "150.000 – 250.000 €", "über 250.000 €"],
+        en: ["up to €25,000", "€25,000 – 75,000", "€75,000 – 150,000", "€150,000 – 250,000", "over €250,000"]
+      };
+
+      function budgetText() {
+        return BUDGETS[sprache][Number(budget.value)];
+      }
+
+      function zeigeBudget() {
+        budgetWert.textContent = budgetText();
+        budget.setAttribute("aria-valuetext", budgetText());
+        /* Goldfüllung der Laufschiene bis zum Griff. */
+        budget.style.setProperty("--fuell", `${(Number(budget.value) / 4) * 100}%`);
+      }
+
+      for (const pille of pillen) {
+        pille.addEventListener("click", () => {
+          for (const andere of pillen) {
+            andere.setAttribute("aria-checked", String(andere === pille));
+          }
+        });
+      }
+
+      budget.addEventListener("input", zeigeBudget);
+      /* Sprachwechsel: der Schalter ist oben registriert, hier zieht nur
+         die Budget-Anzeige nach. */
+      spracheSchalter.addEventListener("click", zeigeBudget);
+      zeigeBudget();
+
+      if (form) {
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const name = form.elements.name.value.trim();
+          const kontakt = form.elements.kontakt.value.trim();
+          if (!name || !kontakt) {
+            formStatus.textContent = sprache === "en"
+              ? "Please enter your name and a way to reach you."
+              : "Bitte Name und eine Kontaktmöglichkeit angeben.";
+            return;
+          }
+          const art = pillen.find((p) => p.getAttribute("aria-checked") === "true");
+          const einordnung = (art ? art.textContent + " · " : "") + budgetText();
+          formStatus.textContent = sprache === "en"
+            ? "Thank you, " + name + " — categorised as: " + einordnung + ". Demo view: in the final version your enquiry is sent directly to the company."
+            : "Danke, " + name + " — eingeordnet als: " + einordnung + ". Demo-Ansicht: In der finalen Version wird Ihre Anfrage direkt an den Betrieb übermittelt.";
+          form.reset();
+          for (const pille of pillen) pille.setAttribute("aria-checked", "false");
+          zeigeBudget();
+        });
+      }
+
+      /* Aufgehen: Inhalte des hellen Teils erscheinen beim Erreichen,
+         gestaffelt innerhalb ihres Elternblocks (Listen, Formularfelder).
+         Einmal aufgegangen bleibt alles stehen — kein Zurückblenden. */
+      if (!reducedMotion && "IntersectionObserver" in window) {
+        const ziele = document.querySelectorAll(
+          ".editorial .editorial__eyebrow, .editorial h2, .editorial > section > p, .standort__text > p, " +
+          ".trust-list li, .standort-fakten li, .editorial .vergleich, .standort-karte-halter, " +
+          ".contact-form .field, .contact-form__foot, .karussell, .faq-punkt, .fuss-marke, .fuss-spalte"
+        );
+        const staffel = new Map();
+        for (const ziel of ziele) {
+          ziel.classList.add("aufgehen");
+          const gruppe = ziel.parentElement;
+          const nummer = staffel.get(gruppe) || 0;
+          staffel.set(gruppe, nummer + 1);
+          ziel.style.setProperty("--staffel", `${Math.min(nummer, 6) * 70}ms`);
+        }
+        const beobachter = new IntersectionObserver((eintraege) => {
+          for (const eintrag of eintraege) {
+            if (!eintrag.isIntersecting) continue;
+            eintrag.target.classList.add("ist-da");
+            beobachter.unobserve(eintrag.target);
+          }
+        }, { threshold: 0.12, rootMargin: "0px 0px -60px 0px" });
+        for (const ziel of ziele) beobachter.observe(ziel);
+      }
+
+      if (reducedMotion) {
+        /* Statische Fassung: kein Canvas, keine Sequenz — nichts zu laden. */
+        document.body.classList.remove("is-loading");
+        return;
+      }
+
+      /* Prüf-Schnittstelle: Zustände gezielt anfahren und fps messen
+         (Qualitätsboden wird gemessen, nicht behauptet). */
+      window.__qa = {
+        state: () => {
+          const raw = rawScrollProgress();
+          const effective = remapProgress(raw);
+          return {
+            raw: Number(raw.toFixed(4)),
+            effective: Number(effective.toFixed(4)),
+            currentFrame: Math.round(currentFrame),
+            targetFrame,
+            lastDrawn,
+            phase: phaseForEffective(effective),
+            store: useMobileFrames ? "mobile" : "desktop",
+            loaded: activeStore.loaded.reduce((a, b) => a + b, 0),
+            count: activeStore.count
+          };
+        },
+        goto: (p) => { window.scrollTo(0, Math.round(sequenceTop + p * sequenceDistance)); },
+        settle: () => {
+          const raw = rawScrollProgress();
+          const effective = remapProgress(raw);
+          targetFrame = Math.round(effective * (activeStore.count - 1));
+          currentFrame = targetFrame;
+          drawFrame(targetFrame);
+          updateChapters(effective);
+          updateInterface(raw, effective, targetFrame);
+        },
+        fps: (ms = 3000) => new Promise((resolve) => {
+          const deltas = [];
+          let last = performance.now();
+          const beginn = last;
+          const probe = (now) => {
+            deltas.push(now - last);
+            last = now;
+            if (now - beginn < ms && deltas.length < 2000) requestAnimationFrame(probe);
+            else {
+              const sum = deltas.reduce((a, b) => a + b, 0);
+              resolve({
+                frames: deltas.length,
+                avgMs: Number((sum / deltas.length).toFixed(2)),
+                maxMs: Number(Math.max(...deltas).toFixed(1)),
+                avgFps: Number((1000 / (sum / deltas.length)).toFixed(1))
+              });
+            }
+          };
+          requestAnimationFrame(probe);
+        })
+      };
+
+      window.addEventListener("resize", () => { resizeCanvas(); updateSequenceMetrics(); }, { passive: true });
+      mobileMedia.addEventListener("change", swapFrameSet);
+      document.addEventListener("visibilitychange", () => {
+        pageVisible = !document.hidden;
+        if (pageVisible) { cancelAnimationFrame(rafId); tick(); }
+      });
+
+      init();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,760 @@
+<!doctype html>
+<!--
+  HAUSWERK — Karriere (Demo)
+  Stellen als gruppierte Liste mit aufklappbaren Details (Muster: 21st.dev
+  „Careers", nativ umgesetzt), darunter die Bewerbung. Gleiche
+  Elegant-Luxury-Palette und Glas-Bedienelemente wie die Startseite.
+  Stellen sind Demo-Inhalte — der Betrieb ersetzt sie vor Veröffentlichung.
+-->
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#131110">
+  <meta name="description" content="Karriere bei Hauswerk – offene Stellen in Sanierung und Modernisierung in Dresden.">
+  <title>Karriere — HAUSWERK</title>
+  <link rel="icon" href="data:,">
+  <style>
+    @font-face {
+      font-family: "Inter";
+      src: url("fonts/Inter-100-900-latin.woff2") format("woff2");
+      font-weight: 100 900;
+      font-display: swap;
+    }
+
+    :root {
+      --ink: #131110;
+      --paper: #ece7db;
+      --mist: #8e8a83;
+      --gold: #c6a35d;
+      --gold-hell: #e2c78a;
+      --line: rgba(234, 229, 218, .14);
+      --glas: rgba(255, 255, 255, .045);
+      --glas-kante: rgba(234, 229, 218, .16);
+      --radius: 0.5rem;
+      --gutter: clamp(20px, 4.2vw, 76px);
+      --ease-out: cubic-bezier(.22, 1, .36, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html { background: var(--ink); color: var(--paper); font-family: "Inter", "Helvetica Neue", Arial, system-ui, sans-serif; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      font-size: 17px;
+      line-height: 1.75;
+      letter-spacing: .01em;
+      overflow-x: clip;
+    }
+
+    a { color: inherit; }
+    button, a, summary { -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+    .micro {
+      font-size: 11px;
+      font-weight: 640;
+      line-height: 1.5;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    /* ============ KOPFZEILE ============ */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 64px;
+      padding: max(14px, env(safe-area-inset-top)) var(--gutter) 12px;
+      background: linear-gradient(180deg, rgba(19, 17, 16, .82) 55%, transparent);
+    }
+
+    .site-header a { text-decoration: none; }
+    .site-header__brand { font-size: 14px; font-weight: 740; letter-spacing: .16em; text-transform: uppercase; }
+    .site-header__nav { display: flex; align-items: center; gap: 22px; color: rgba(232, 227, 218, .75); }
+    .site-header__nav a:hover { color: var(--gold-hell); }
+
+    /* ============ AUFTAKT ============ */
+    /* Das sanierte Haus als Bühne — die Baustelle ist das Argument. */
+    .auftakt {
+      position: relative;
+      min-height: 62svh;
+      display: grid;
+      align-content: end;
+      padding: 120px var(--gutter) clamp(48px, 7vw, 90px);
+      margin-top: calc(-64px - max(14px, env(safe-area-inset-top)));
+      isolation: isolate;
+      overflow: hidden;
+    }
+
+    .auftakt::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background: url("bilder/nachher-front.webp") center 35% / cover no-repeat;
+    }
+
+    .auftakt::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background:
+        linear-gradient(180deg, rgba(19, 17, 16, .78), rgba(19, 17, 16, .35) 45%, rgba(19, 17, 16, .92) 88%, var(--ink));
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 20px;
+      color: var(--gold);
+    }
+
+    .eyebrow::before { content: ""; width: 26px; height: 2px; background: var(--gold); }
+
+    h1 {
+      max-width: 16ch;
+      margin: 0;
+      font-size: clamp(38px, 6vw, 88px);
+      font-weight: 730;
+      letter-spacing: -.032em;
+      line-height: 1;
+      text-wrap: balance;
+    }
+
+    h1 em { font-style: normal; color: var(--gold-hell); }
+
+    .auftakt p {
+      max-width: 40rem;
+      margin: 22px 0 0;
+      color: rgba(232, 227, 218, .88);
+      text-wrap: pretty;
+    }
+
+    /* ============ INHALT ============ */
+    .inhalt { max-width: 1240px; margin: 0 auto; padding: 0 var(--gutter) clamp(60px, 8vw, 110px); }
+    .inhalt section { padding-top: clamp(56px, 8vw, 110px); }
+
+    h2 {
+      max-width: 24ch;
+      margin: 0;
+      font-size: clamp(28px, 3.6vw, 52px);
+      font-weight: 710;
+      letter-spacing: -.036em;
+      line-height: 1.06;
+      text-wrap: balance;
+    }
+
+    .einleitung { max-width: 42rem; margin: 20px 0 0; color: rgba(232, 227, 218, .8); text-wrap: pretty; }
+
+    /* Gleichrangige Gründe: Liste mit feinen Linien, keine Kacheln. */
+    .gruende {
+      max-width: 56rem;
+      margin: clamp(30px, 4vw, 48px) 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .gruende li {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+      gap: 8px 32px;
+      padding: 18px 0;
+      border-top: 1px solid var(--line);
+      transition: padding-left 300ms var(--ease-out);
+    }
+
+    .gruende li:last-child { border-bottom: 1px solid var(--line); }
+    .gruende strong { font-weight: 640; letter-spacing: -.015em; }
+    .gruende span { color: var(--mist); }
+
+    .gruende li::before {
+      content: "";
+      position: absolute;
+      top: -1px;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, var(--gold), rgba(198, 163, 93, .3), transparent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 420ms var(--ease-out);
+    }
+
+    @media (hover: hover) {
+      .gruende li:hover { padding-left: 14px; }
+      .gruende li:hover::before { transform: scaleX(1); }
+    }
+
+    /* ============ STELLEN ============ */
+    .stellen { margin-top: clamp(30px, 4vw, 48px); display: grid; gap: 12px; }
+
+    .stelle {
+      border: 1px solid var(--glas-kante);
+      border-radius: calc(var(--radius) * 2);
+      background: linear-gradient(170deg, rgba(255, 255, 255, .06), var(--glas) 45%);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      backdrop-filter: blur(18px) saturate(1.2);
+      box-shadow: 0 14px 40px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .1);
+      transition: border-color 240ms ease, transform 240ms var(--ease-out), box-shadow 240ms ease;
+    }
+
+    .stelle:hover { border-color: rgba(198, 163, 93, .45); }
+    .stelle[open] { border-color: rgba(198, 163, 93, .6); }
+
+    .stelle summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px clamp(18px, 2.4vw, 28px);
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .stelle summary::-webkit-details-marker { display: none; }
+
+    .stelle__titel { margin: 0; font-size: clamp(18px, 1.8vw, 23px); font-weight: 680; letter-spacing: -.02em; }
+    .stelle__meta { margin: 2px 0 0; color: var(--mist); }
+
+    /* Das Plus dreht sich beim Öffnen zum Kreuz — der Zustand ist ablesbar. */
+    .stelle__plus {
+      flex: none;
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--glas-kante);
+      border-radius: 50%;
+      color: var(--gold-hell);
+      transition: transform 320ms var(--ease-out), border-color 240ms ease;
+    }
+
+    .stelle__plus svg { width: 16px; height: 16px; }
+    .stelle[open] .stelle__plus { transform: rotate(45deg); border-color: var(--gold); }
+    .stelle summary:hover .stelle__plus { border-color: var(--gold); }
+
+    .stelle__inhalt {
+      padding: 0 clamp(18px, 2.4vw, 28px) 24px;
+      border-top: 1px solid var(--line);
+      animation: stelle-auf 420ms var(--ease-out) both;
+    }
+
+    @keyframes stelle-auf {
+      from { opacity: 0; transform: translateY(-8px); }
+    }
+
+    .stelle__inhalt p { max-width: 46rem; margin: 18px 0 0; color: rgba(232, 227, 218, .82); font-size: 15.5px; }
+
+    .stelle__inhalt ul {
+      max-width: 46rem;
+      margin: 14px 0 0;
+      padding: 0;
+      list-style: none;
+      columns: 2;
+      column-gap: 32px;
+    }
+
+    .stelle__inhalt li {
+      break-inside: avoid;
+      padding: 8px 0;
+      border-top: 1px solid var(--line);
+      font-size: 14.5px;
+      color: rgba(232, 227, 218, .85);
+    }
+
+    .stelle__cta { margin-top: 20px; }
+
+    /* ============ GLAS-CTA ============ */
+    .cta {
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      gap: 30px;
+      min-height: 54px;
+      padding: 0 24px;
+      border: 1px solid rgba(198, 163, 93, .55);
+      border-radius: var(--radius);
+      background: linear-gradient(165deg, rgba(198, 163, 93, .34), rgba(198, 163, 93, .12) 55%, rgba(255, 255, 255, .05));
+      -webkit-backdrop-filter: blur(14px) saturate(1.25);
+      backdrop-filter: blur(14px) saturate(1.25);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, .1), inset 0 1px 0 rgba(255, 255, 255, .22);
+      color: #f6efdd;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 680;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 240ms var(--ease-out), box-shadow 240ms ease, border-color 240ms ease;
+    }
+
+    .cta::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(115deg, transparent 32%, rgba(255, 250, 238, .38) 50%, transparent 68%);
+      transform: translateX(-130%);
+      transition: transform 650ms ease;
+      pointer-events: none;
+    }
+
+    .cta::after { content: "→"; font-size: 16px; transition: transform 240ms var(--ease-out); }
+
+    .cta:hover {
+      transform: translateY(-2px);
+      border-color: rgba(226, 199, 138, .9);
+      box-shadow: 0 12px 32px rgba(198, 163, 93, .28), inset 0 1px 0 rgba(255, 255, 255, .35);
+    }
+    .cta:hover::before { transform: translateX(130%); }
+    .cta:hover::after { transform: translateX(5px); }
+    .cta:active { transform: translateY(0) scale(.985); }
+    .cta:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(198, 163, 93, .45); }
+
+    /* ============ BEWERBUNG ============ */
+    .bewerbung-form {
+      max-width: 46rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px 22px;
+      margin-top: clamp(28px, 4vw, 44px);
+    }
+
+    .feld--breit { grid-column: 1 / -1; }
+    .feld label { display: block; margin-bottom: 7px; color: var(--gold); }
+
+    .feld input, .feld textarea {
+      width: 100%;
+      min-height: 50px;
+      padding: 13px 15px;
+      border: 1px solid var(--glas-kante);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, .05);
+      color: var(--paper);
+      font: inherit;
+      font-size: 16px;
+      line-height: 1.5;
+      transition: border-color 200ms ease, box-shadow 200ms ease;
+    }
+
+    .feld textarea { min-height: 120px; resize: vertical; }
+
+    .feld input:focus, .feld textarea:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(198, 163, 93, .2);
+    }
+
+    .bewerbung-fuss {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 26px;
+    }
+
+    .bewerbung-fuss .micro { color: var(--mist); }
+    .form-status { grid-column: 1 / -1; margin: 0; min-height: 1.5em; color: var(--gold-hell); font-weight: 550; }
+
+    /* ============ AUFGEHEN (Scroll-Reveal) ============ */
+    .aufgehen {
+      opacity: 0;
+      transform: translateY(26px);
+      transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out);
+      transition-delay: var(--staffel, 0ms);
+    }
+
+    .aufgehen.ist-da { opacity: 1; transform: none; }
+
+    /* ============ FUSSZEILE ============ */
+    /* Nach der Startseiten-Vorlage: oben abgerundete Platte mit Goldschein
+       an der Oberkante, Marken-Block und Link-Spalten. */
+    .site-footer { padding: clamp(40px, 6vw, 70px) var(--gutter) 0; }
+
+    .fuss {
+      position: relative;
+      max-width: 76rem;
+      margin: 0 auto;
+      padding: clamp(40px, 5vw, 64px) clamp(22px, 4vw, 56px) max(30px, env(safe-area-inset-bottom));
+      border: 1px solid var(--glas-kante);
+      border-bottom: 0;
+      border-radius: calc(var(--radius) * 4) calc(var(--radius) * 4) 0 0;
+      background: rgba(255, 255, 255, .03);
+      color: var(--mist);
+    }
+
+    .fuss::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(35% 128px at 50% 0%, rgba(198, 163, 93, .13), transparent);
+      pointer-events: none;
+    }
+
+    .fuss-glanz {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 33%;
+      height: 2px;
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      background: var(--gold);
+      filter: blur(3px);
+      opacity: .65;
+    }
+
+    .fuss-kopf { display: grid; gap: clamp(30px, 4vw, 48px); }
+    .fuss-marke { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+    .fuss-marke svg { width: 30px; height: 30px; color: var(--gold); }
+    .fuss-marke .micro { color: var(--paper); }
+    .fuss-copy { margin: 0; font-size: 13.5px; }
+
+    .fuss-spalten { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+    .fuss-spalte h2 { margin: 0 0 14px; color: var(--paper); }
+    .fuss-spalte ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+
+    .fuss-spalte a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      color: inherit;
+      text-decoration: none;
+      transition: color 300ms ease, transform 300ms var(--ease-out);
+    }
+
+    .fuss-spalte a:hover { color: var(--gold); transform: translateX(3px); }
+    .fuss-spalte a svg { width: 16px; height: 16px; flex: none; }
+    .fuss-sozial-hinweis { margin: 12px 0 0; font-size: 10px; opacity: .75; }
+
+    @media (min-width: 700px) { .fuss-spalten { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    @media (min-width: 1100px) { .fuss-kopf { grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr); align-items: start; } }
+
+    /* In der Fußzeile geht es nach der Vorlage aus der Unschärfe auf —
+       leicht von oben statt von unten. */
+    .site-footer .aufgehen {
+      transform: translateY(-10px);
+      filter: blur(4px);
+      transition: opacity 800ms var(--ease-out), transform 800ms var(--ease-out), filter 800ms var(--ease-out);
+      transition-delay: var(--staffel, 0ms);
+    }
+    .site-footer .aufgehen.ist-da { filter: blur(0); }
+
+    /* ============ MOBIL ============ */
+    @media (max-width: 780px) {
+      .gruende li { grid-template-columns: 1fr; gap: 4px; }
+      .stelle__inhalt ul { columns: 1; }
+      .bewerbung-form { grid-template-columns: 1fr; }
+      .site-header__nav { gap: 14px; }
+    }
+
+    /* ============ REDUZIERTE BEWEGUNG ============ */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+      }
+      .aufgehen { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <a class="site-header__brand" href="index.html">Hauswerk</a>
+    <nav class="site-header__nav micro" aria-label="Seiten">
+      <a href="termin.html">Termin</a>
+      <a href="index.html#kontakt">Kontakt</a>
+    </nav>
+  </header>
+
+  <section class="auftakt">
+    <p class="eyebrow micro">Karriere</p>
+    <h1>Bauen Sie mit an <em>bleibenden Werten</em>.</h1>
+    <p>Hauswerk saniert und modernisiert Häuser in Dresden und Umland — mit
+       Leuten, die ihr Handwerk ernst nehmen. Wir suchen Verstärkung.</p>
+  </section>
+
+  <main class="inhalt">
+    <section aria-labelledby="warum-titel">
+      <p class="eyebrow micro">Warum Hauswerk</p>
+      <h2 id="warum-titel">Gute Arbeit braucht gute Bedingungen.</h2>
+      <ul class="gruende">
+        <li><strong>Faire, pünktliche Bezahlung</strong><span>Übertariflich, mit klaren Zuschlägen — besprochen im ersten Gespräch, nicht danach.</span></li>
+        <li><strong>Baustellen vor der Haustür</strong><span>Dresden und Umland. Abends zu Hause statt auf Montage.</span></li>
+        <li><strong>Ordentliches Werkzeug</strong><span>Moderne Maschinen, gepflegte Fahrzeuge, Arbeitskleidung gestellt.</span></li>
+        <li><strong>Weiterbildung, die zählt</strong><span>Meisterkurse, Herstellerschulungen und Zusatzqualifikationen — bezahlt vom Betrieb.</span></li>
+        <li><strong>Ein Wort gilt</strong><span>Verlässliche Einsatzplanung und feste Ansprechpartner, auf der Baustelle wie im Büro.</span></li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="stellen-titel">
+      <p class="eyebrow micro">Offene Stellen</p>
+      <h2 id="stellen-titel">Wen wir gerade suchen.</h2>
+      <p class="einleitung">Alle Stellen: unbefristet, in Vollzeit, Einsatzgebiet Dresden und Umland.
+         Nichts Passendes dabei? Unten freuen wir uns auch über Ihre Initiativbewerbung.</p>
+
+      <div class="stellen">
+        <details class="stelle">
+          <summary>
+            <span>
+              <h3 class="stelle__titel">Bauleiter:in Sanierung</h3>
+              <p class="stelle__meta micro">Vollzeit · Dresden · ab sofort</p>
+            </span>
+            <span class="stelle__plus" aria-hidden="true">
+              <svg viewBox="0 0 16 16"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </span>
+          </summary>
+          <div class="stelle__inhalt">
+            <p>Sie führen unsere Sanierungsprojekte vom Aufmaß bis zur Abnahme:
+               Sie koordinieren die Gewerke, halten Kosten und Termine und sind
+               erste Ansprechperson für unsere Auftraggeber.</p>
+            <ul>
+              <li>Abgeschlossene Ausbildung oder Studium im Bauwesen</li>
+              <li>Erfahrung in Altbausanierung oder Hochbau</li>
+              <li>Sicherer Umgang mit Aufmaß und Ausschreibung</li>
+              <li>Führerschein Klasse B</li>
+            </ul>
+            <div class="stelle__cta"><a class="cta" href="#bewerbung" data-stelle="Bauleiter:in Sanierung">Jetzt bewerben</a></div>
+          </div>
+        </details>
+
+        <details class="stelle">
+          <summary>
+            <span>
+              <h3 class="stelle__titel">Fachkraft Fassade &amp; Ausbau</h3>
+              <p class="stelle__meta micro">Vollzeit · Dresden · ab sofort</p>
+            </span>
+            <span class="stelle__plus" aria-hidden="true">
+              <svg viewBox="0 0 16 16"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </span>
+          </summary>
+          <div class="stelle__inhalt">
+            <p>Dämmung, Putz, Anstrich, Trockenbau: Sie bringen Fassaden und
+               Innenräume auf den Stand, den unsere Vorher-nachher-Bilder zeigen.</p>
+            <ul>
+              <li>Ausbildung als Maler:in, Stuckateur:in o. ä.</li>
+              <li>Saubere, selbstständige Arbeitsweise</li>
+              <li>Erfahrung mit WDVS von Vorteil</li>
+              <li>Führerschein Klasse B von Vorteil</li>
+            </ul>
+            <div class="stelle__cta"><a class="cta" href="#bewerbung" data-stelle="Fachkraft Fassade &amp; Ausbau">Jetzt bewerben</a></div>
+          </div>
+        </details>
+
+        <details class="stelle">
+          <summary>
+            <span>
+              <h3 class="stelle__titel">Zimmerer:in / Dachdecker:in</h3>
+              <p class="stelle__meta micro">Vollzeit · Dresden · ab sofort</p>
+            </span>
+            <span class="stelle__plus" aria-hidden="true">
+              <svg viewBox="0 0 16 16"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </span>
+          </summary>
+          <div class="stelle__inhalt">
+            <p>Dachstuhl, Eindeckung, Gauben und Dämmung — Sie sorgen dafür,
+               dass jedes unserer Projekte oben dicht und schön wird.</p>
+            <ul>
+              <li>Ausbildung im Zimmerer- oder Dachdeckerhandwerk</li>
+              <li>Höhentauglichkeit und Teamgeist</li>
+              <li>Erfahrung in der Altbausanierung von Vorteil</li>
+              <li>Führerschein Klasse B von Vorteil</li>
+            </ul>
+            <div class="stelle__cta"><a class="cta" href="#bewerbung" data-stelle="Zimmerer:in / Dachdecker:in">Jetzt bewerben</a></div>
+          </div>
+        </details>
+
+        <details class="stelle">
+          <summary>
+            <span>
+              <h3 class="stelle__titel">Ausbildung Hochbaufacharbeiter:in</h3>
+              <p class="stelle__meta micro">Ausbildung · Dresden · ab August 2027</p>
+            </span>
+            <span class="stelle__plus" aria-hidden="true">
+              <svg viewBox="0 0 16 16"><path d="M8 1v14M1 8h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </span>
+          </summary>
+          <div class="stelle__inhalt">
+            <p>Drei Jahre, in denen Sie ein echtes Handwerk von Grund auf
+               lernen — auf richtigen Baustellen, mit fester Betreuung durch
+               unsere Gesellen und Meister.</p>
+            <ul>
+              <li>Guter Hauptschul- oder Realschulabschluss</li>
+              <li>Freude an praktischer Arbeit</li>
+              <li>Zuverlässigkeit und Neugier</li>
+              <li>Schnupperpraktikum jederzeit möglich</li>
+            </ul>
+            <div class="stelle__cta"><a class="cta" href="#bewerbung" data-stelle="Ausbildung Hochbaufacharbeiter:in">Jetzt bewerben</a></div>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section id="bewerbung" aria-labelledby="bewerbung-titel">
+      <p class="eyebrow micro">Bewerbung</p>
+      <h2 id="bewerbung-titel">In zwei Minuten beworben.</h2>
+      <p class="einleitung">Kein Anschreiben nötig — sagen Sie uns, wer Sie sind und was Sie können.
+         Wir melden uns innerhalb von zwei Werktagen.</p>
+      <form class="bewerbung-form" id="bewerbung-form" novalidate>
+        <div class="feld">
+          <label class="micro" for="b-name">Ihr Name</label>
+          <input id="b-name" name="name" type="text" autocomplete="name" required>
+        </div>
+        <div class="feld">
+          <label class="micro" for="b-kontakt">E-Mail oder Telefon</label>
+          <input id="b-kontakt" name="kontakt" type="text" autocomplete="email" required>
+        </div>
+        <div class="feld feld--breit">
+          <label class="micro" for="b-stelle">Stelle</label>
+          <input id="b-stelle" name="stelle" type="text" placeholder="z. B. Fachkraft Fassade — oder: Initiativbewerbung">
+        </div>
+        <div class="feld feld--breit">
+          <label class="micro" for="b-text">Über Sie <span aria-hidden="true">·</span> optional</label>
+          <textarea id="b-text" name="text" placeholder="Ausbildung, Erfahrung, frühester Starttermin …"></textarea>
+        </div>
+        <p class="form-status" id="bewerbung-status" role="status" aria-live="polite"></p>
+        <div class="bewerbung-fuss">
+          <button class="cta" type="submit">Bewerbung senden</button>
+          <span class="micro">Demo-Ansicht — versendet wird in der finalen Fassung über den Betrieb.</span>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="fuss">
+      <span class="fuss-glanz" aria-hidden="true"></span>
+      <div class="fuss-kopf">
+        <div class="fuss-marke">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <p class="micro">Hauswerk — Sanierung &amp; Modernisierung · Demo-Entwurf</p>
+          <p class="fuss-copy">© 2026 Hauswerk. Alle Rechte vorbehalten.</p>
+        </div>
+        <nav class="fuss-spalten" aria-label="Fußzeilen-Navigation">
+          <div class="fuss-spalte">
+            <h2 class="micro">Seiten</h2>
+            <ul>
+              <li><a href="index.html">Startseite</a></li>
+              <li><a href="termin.html">Termin buchen</a></li>
+              <li><a href="karriere.html">Karriere</a></li>
+            </ul>
+          </div>
+          <div class="fuss-spalte">
+            <h2 class="micro">Entdecken</h2>
+            <ul>
+              <li><a href="index.html#referenzen">Referenzen</a></li>
+              <li><a href="index.html#vergleich">Vorher &amp; Nachher</a></li>
+              <li><a href="index.html#standort">Standort</a></li>
+              <li><a href="index.html#faq">FAQ</a></li>
+              <li><a href="index.html#kontakt">Kontakt</a></li>
+            </ul>
+          </div>
+          <div class="fuss-spalte">
+            <h2 class="micro">Rechtliches</h2>
+            <ul>
+              <li><a href="index.html#impressum">Impressum</a></li>
+              <li><a href="index.html#datenschutz">Datenschutz</a></li>
+            </ul>
+          </div>
+          <div class="fuss-spalte">
+            <h2 class="micro">Social</h2>
+            <ul>
+              <li><a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>Facebook</a></li>
+              <li><a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>Instagram</a></li>
+              <li><a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/><path d="m10 15 5-3-5-3z"/></svg>YouTube</a></li>
+              <li><a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>LinkedIn</a></li>
+            </ul>
+            <p class="fuss-sozial-hinweis micro">Kanäle folgen vom Betrieb</p>
+          </div>
+        </nav>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (() => {
+      "use strict";
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      /* Aufgehen: Überschriften, Gründe und Stellen erscheinen beim
+         Erreichen, gestaffelt innerhalb ihrer Gruppe. */
+      if (!reducedMotion && "IntersectionObserver" in window) {
+        const ziele = document.querySelectorAll(
+          ".inhalt .eyebrow, .inhalt h2, .einleitung, .gruende li, .stelle, .bewerbung-form .feld, .bewerbung-fuss, .fuss-marke, .fuss-spalte"
+        );
+        const staffel = new Map();
+        for (const ziel of ziele) {
+          ziel.classList.add("aufgehen");
+          const gruppe = ziel.parentElement;
+          const nummer = staffel.get(gruppe) || 0;
+          staffel.set(gruppe, nummer + 1);
+          ziel.style.setProperty("--staffel", `${Math.min(nummer, 6) * 70}ms`);
+        }
+        const beobachter = new IntersectionObserver((eintraege) => {
+          for (const eintrag of eintraege) {
+            if (!eintrag.isIntersecting) continue;
+            eintrag.target.classList.add("ist-da");
+            beobachter.unobserve(eintrag.target);
+          }
+        }, { threshold: 0.12, rootMargin: "0px 0px -60px 0px" });
+        for (const ziel of ziele) beobachter.observe(ziel);
+      }
+
+      /* „Jetzt bewerben" trägt die Stelle ins Formular ein und fährt hin.
+         Eigenes rAF-Scrollen statt behavior:smooth — das native fehlt in
+         manchen eingebetteten Ansichten. */
+      const stellenFeld = document.getElementById("b-stelle");
+      function glattZu(zielY) {
+        const start = window.scrollY;
+        const delta = zielY - start;
+        if (reducedMotion || Math.abs(delta) < 2) { window.scrollTo(0, zielY); return; }
+        const dauer = Math.min(1200, 500 + Math.abs(delta) * 0.1);
+        const beginn = performance.now();
+        const schritt = (jetzt) => {
+          const t = Math.min(1, (jetzt - beginn) / dauer);
+          window.scrollTo(0, Math.round(start + delta * (1 - Math.pow(1 - t, 3))));
+          if (t < 1) requestAnimationFrame(schritt);
+        };
+        requestAnimationFrame(schritt);
+      }
+      for (const knopf of document.querySelectorAll("[data-stelle]")) {
+        knopf.addEventListener("click", (event) => {
+          event.preventDefault();
+          stellenFeld.value = knopf.dataset.stelle;
+          const box = document.getElementById("bewerbung").getBoundingClientRect();
+          glattZu(window.scrollY + box.top - 60);
+          window.setTimeout(() => document.getElementById("b-name").focus({ preventScroll: true }), reducedMotion ? 0 : 550);
+        });
+      }
+
+      /* Demoformular: prüft Eingaben und bestätigt. */
+      const form = document.getElementById("bewerbung-form");
+      const status = document.getElementById("bewerbung-status");
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const name = form.elements.name.value.trim();
+        const kontakt = form.elements.kontakt.value.trim();
+        if (!name || !kontakt) {
+          status.textContent = "Bitte Name und eine Kontaktmöglichkeit angeben.";
+          return;
+        }
+        status.textContent = `Danke, ${name} — Demo-Ansicht: In der finalen Fassung geht Ihre Bewerbung direkt an den Betrieb.`;
+        form.reset();
+      });
+    })();
+  </script>
+</body>
+</html>
